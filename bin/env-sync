@@ -562,8 +562,7 @@ cmd_add() {
     local content=$(get_secrets_content "$work_file")
     
     # Remove existing key if present (handle various formats)
-    content=$(printf '%s\n' "$content" | awk -v key="$key" -v prefix="$ENV_SYNC_KEY_UPDATED_AT_PREFIX" '
-        index($0, prefix " " key " ") == 1 { next }
+    content=$(printf '%s\n' "$content" | awk -v key="$key" '
         $0 ~ "^" key "=" { next }
         $0 ~ "^export[[:space:]]+" key "=" { next }
         $0 ~ "^# " key " is set$" { next }
@@ -572,16 +571,14 @@ cmd_add() {
 
     local updated_at=$(get_timestamp)
     local updated_line
-    updated_line=$(format_key_updated_at_line "$key" "$updated_at")
+    updated_line=$(append_key_updated_at_comment "$key=\"$value\"" "$updated_at")
 
     # Add new key-value pair
     if [[ -n "$content" ]]; then
         content="${content}
-${updated_line}
-$key=\"$value\""
+${updated_line}"
     else
-        content="${updated_line}
-$key=\"$value\""
+        content="${updated_line}"
     fi
 
     # Remove empty lines at start/end
@@ -667,8 +664,7 @@ cmd_remove() {
     
     # Get current content and remove the key
     local content=$(get_secrets_content "$work_file")
-    content=$(printf '%s\n' "$content" | awk -v key="$key" -v prefix="$ENV_SYNC_KEY_UPDATED_AT_PREFIX" '
-        index($0, prefix " " key " ") == 1 { next }
+    content=$(printf '%s\n' "$content" | awk -v key="$key" '
         $0 ~ "^" key "=" { next }
         $0 ~ "^export[[:space:]]+" key "=" { next }
         $0 ~ "^# " key " is set$" { next }

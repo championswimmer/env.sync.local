@@ -195,10 +195,8 @@ MAX_BACKUPS=5
 # === END_METADATA ===
 
 # Your secrets here
-# ENV_SYNC_UPDATED_AT: OPENAI_API_KEY 2026-02-07T15:30:45Z
-OPENAI_API_KEY="sk-xxx"
-# ENV_SYNC_UPDATED_AT: AWS_ACCESS_KEY_ID 2026-02-07T15:32:10Z
-AWS_ACCESS_KEY_ID="AKIA..."
+OPENAI_API_KEY="sk-xxx" #ENV_SYNC_UPDATED_AT 2026-02-07T15:30:45Z
+AWS_ACCESS_KEY_ID="AKIA..." #ENV_SYNC_UPDATED_AT 2026-02-07T15:32:10Z
 
 # === ENV_SYNC_FOOTER ===
 # VERSION: 1.2.3
@@ -212,7 +210,7 @@ AWS_ACCESS_KEY_ID="AKIA..."
 - Checksum calculated over entire file
 - Version uses semantic versioning
 - Timestamps in ISO 8601 UTC format
-- Per-key timestamps stored in `# ENV_SYNC_UPDATED_AT: KEY TIMESTAMP` comment lines
+- Per-key timestamps stored inline as `#ENV_SYNC_UPDATED_AT <timestamp>` comments
 - File permissions: 600 (owner only)
 
 ## Dependencies

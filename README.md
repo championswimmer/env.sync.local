@@ -295,8 +295,7 @@ YWdlLWVuY3J5cHRpb24ub3JnL3Yx...
 **Metadata stays plaintext** (for discovery/versioning), only **secret values encrypted**.
 Inside the encrypted payload, each key includes a per-key timestamp comment used for merging:
 ```
-# ENV_SYNC_UPDATED_AT: OPENAI_API_KEY 2026-02-07T15:30:45Z
-OPENAI_API_KEY="sk-example-key-redacted"
+OPENAI_API_KEY="sk-example-key-redacted" #ENV_SYNC_UPDATED_AT 2026-02-07T15:30:45Z
 ```
 
 ## How It Works
