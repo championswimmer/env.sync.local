@@ -14,8 +14,8 @@
 
 ### Sync Strategy
 1. **Discovery**: Find peers via mDNS (`_envsync._tcp` service on port 5739)
-2. **Comparison**: Compare version/timestamp to find newest file
-3. **Fetch**: Download from peer with newest version
+2. **Fetch**: Download secrets from discovered peers
+3. **Merge**: Compare per-key updated_at timestamps and merge newest values per key
 4. **Backup**: Always backup before overwriting (keep last 5)
 5. **Update**: Replace local file and update metadata
 
@@ -195,7 +195,9 @@ MAX_BACKUPS=5
 # === END_METADATA ===
 
 # Your secrets here
+# ENV_SYNC_UPDATED_AT: OPENAI_API_KEY 2026-02-07T15:30:45Z
 OPENAI_API_KEY="sk-xxx"
+# ENV_SYNC_UPDATED_AT: AWS_ACCESS_KEY_ID 2026-02-07T15:32:10Z
 AWS_ACCESS_KEY_ID="AKIA..."
 
 # === ENV_SYNC_FOOTER ===
@@ -210,6 +212,7 @@ AWS_ACCESS_KEY_ID="AKIA..."
 - Checksum calculated over entire file
 - Version uses semantic versioning
 - Timestamps in ISO 8601 UTC format
+- Per-key timestamps stored in `# ENV_SYNC_UPDATED_AT: KEY TIMESTAMP` comment lines
 - File permissions: 600 (owner only)
 
 ## Dependencies
@@ -258,8 +261,7 @@ env-sync (or cron/shell trigger)
     ├── For each peer:
     │   ├── Fetch /secrets.env via HTTP
     │   ├── Validate file format
-    │   └── Compare version/timestamp
-    ├── Find newest version
+    │   └── Merge keys based on per-key updated_at timestamps
     ├── Create backup
     ├── Replace local file
     └── Update metadata

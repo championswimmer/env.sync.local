@@ -38,7 +38,7 @@ SECURITY NOTICE:
   • No authentication required
 
 Commands:
-  sync [options]           Sync secrets from network (default)
+  sync [options]           Sync and merge secrets from network (default)
     Options:
       -a, --all            Sync from all discovered peers
       -f, --force          Force sync even if local is newer
@@ -156,6 +156,7 @@ cmd_sync() {
                 echo "Usage: env-sync sync [options]"
                 echo ""
                 echo "Syncs secrets from peers using SCP (SSH) by default."
+                echo "Merges per-key updates across discovered peers."
                 echo ""
                 echo "Options:"
                 echo "  -a, --all              Sync from all discovered peers"
@@ -561,14 +562,30 @@ cmd_add() {
     local content=$(get_secrets_content "$work_file")
     
     # Remove existing key if present (handle various formats)
-    content=$(echo "$content" | grep -v "^$key=" | grep -v "^export $key=" | grep -v "^# $key is set$")
-    
+    content=$(printf '%s\n' "$content" | awk -v key="$key" -v prefix="$ENV_SYNC_KEY_UPDATED_AT_PREFIX" '
+        index($0, prefix " " key " ") == 1 { next }
+        $0 ~ "^" key "=" { next }
+        $0 ~ "^export[[:space:]]+" key "=" { next }
+        $0 ~ "^# " key " is set$" { next }
+        { print }
+    ')
+
+    local updated_at=$(get_timestamp)
+    local updated_line
+    updated_line=$(format_key_updated_at_line "$key" "$updated_at")
+
     # Add new key-value pair
-    content="${content}
+    if [[ -n "$content" ]]; then
+        content="${content}
+${updated_line}
 $key=\"$value\""
-    
-    # Remove empty lines at start/end and deduplicate
-    content=$(echo "$content" | sed '/^$/N;/^\n$/D' | sed '/^[[:space:]]*$/d')
+    else
+        content="${updated_line}
+$key=\"$value\""
+    fi
+
+    # Remove empty lines at start/end
+    content=$(printf '%s\n' "$content" | sed '/^[[:space:]]*$/d')
     
     # Save updated content
     set_secrets_content "$work_file" "$content"
@@ -650,10 +667,16 @@ cmd_remove() {
     
     # Get current content and remove the key
     local content=$(get_secrets_content "$work_file")
-    content=$(echo "$content" | grep -v "^$key=" | grep -v "^export $key=" | grep -v "^# $key is set$")
-    
+    content=$(printf '%s\n' "$content" | awk -v key="$key" -v prefix="$ENV_SYNC_KEY_UPDATED_AT_PREFIX" '
+        index($0, prefix " " key " ") == 1 { next }
+        $0 ~ "^" key "=" { next }
+        $0 ~ "^export[[:space:]]+" key "=" { next }
+        $0 ~ "^# " key " is set$" { next }
+        { print }
+    ')
+
     # Remove empty lines
-    content=$(echo "$content" | sed '/^[[:space:]]*$/d')
+    content=$(printf '%s\n' "$content" | sed '/^[[:space:]]*$/d')
     
     # Save updated content
     set_secrets_content "$work_file" "$content"

@@ -70,3 +70,24 @@ load 'test_helper'
     run get_secret "$CONTAINER_ALPHA" "MULTI_3"
     [ "$output" = "value-3" ]
 }
+
+@test "Add unique secrets on beta and gamma before merge sync" {
+    run add_secret "$CONTAINER_BETA" "MERGE_FROM_BETA" "beta-value-1"
+    [ "$status" -eq 0 ]
+
+    run add_secret "$CONTAINER_GAMMA" "MERGE_FROM_GAMMA" "gamma-value-1"
+    [ "$status" -eq 0 ]
+}
+
+@test "Merge secrets from multiple peers onto alpha" {
+    run trigger_sync "$CONTAINER_ALPHA"
+    [ "$status" -eq 0 ]
+
+    run get_secret "$CONTAINER_ALPHA" "MERGE_FROM_BETA"
+    [ "$status" -eq 0 ]
+    [ "$output" = "beta-value-1" ]
+
+    run get_secret "$CONTAINER_ALPHA" "MERGE_FROM_GAMMA"
+    [ "$status" -eq 0 ]
+    [ "$output" = "gamma-value-1" ]
+}

@@ -293,6 +293,11 @@ YWdlLWVuY3J5cHRpb24ub3JnL3Yx...
 ```
 
 **Metadata stays plaintext** (for discovery/versioning), only **secret values encrypted**.
+Inside the encrypted payload, each key includes a per-key timestamp comment used for merging:
+```
+# ENV_SYNC_UPDATED_AT: OPENAI_API_KEY 2026-02-07T15:30:45Z
+OPENAI_API_KEY="sk-..."
+```
 
 ## How It Works
 
@@ -320,8 +325,8 @@ When Machine D joins:
 1. **Discovery**: Find peers via mDNS
 2. **Fetch**: Download encrypted secrets via SCP
 3. **Decrypt**: Decrypt using local private key (if in recipient list)
-4. **Compare**: Check versions
-5. **Merge**: Use newest version
+4. **Compare**: Compare per-key updated_at timestamps
+5. **Merge**: Merge newest value per key across peers
 6. **Re-encrypt**: Encrypt to all known recipients
 7. **Save**: Store encrypted file
 

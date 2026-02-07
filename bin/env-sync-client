@@ -65,6 +65,7 @@ while [[ $# -gt 0 ]]; do
             echo "Usage: env-sync-client [options] [hostname]"
             echo ""
             echo "Syncs secrets from peers using SSH/SCP (secure) by default."
+            echo "Merges per-key updates across discovered peers."
             echo ""
             echo "Options:"
             echo "  -a, --all              Sync from all discovered peers"
@@ -203,7 +204,7 @@ reencrypt_secrets() {
     
     if [[ ${#recipients[@]} -eq 0 ]]; then
         log "WARN" "No recipients found - keeping as plaintext"
-        cp "$plaintext_file" "$output_file"
+        set_secrets_content "$output_file" "$(cat "$plaintext_file")"
         return 0
     fi
     
@@ -309,19 +310,23 @@ sync_from_host() {
     # Check if local file exists
     if [[ ! -f "$SECRETS_FILE" ]]; then
         log "INFO" "No local secrets file found, copying from $host"
-        
-        # If remote is encrypted, we should re-encrypt to all known recipients
+
+        local remote_timestamp
+        remote_timestamp=$(get_file_timestamp "$remote_file")
+        [[ -z "$remote_timestamp" ]] && remote_timestamp="$ENV_SYNC_INIT_TIMESTAMP"
+
+        local temp_decrypted=$(mktemp)
         if is_file_encrypted "$remote_file"; then
-            local temp_decrypted=$(mktemp)
             decrypt_secrets_file "$remote_file" "$temp_decrypted"
-            reencrypt_secrets "$temp_decrypted" "$SECRETS_FILE"
-            rm -f "$temp_decrypted"
         else
-            cp "$remote_file" "$SECRETS_FILE"
-            chmod 600 "$SECRETS_FILE"
+            cp "$remote_file" "$temp_decrypted"
         fi
-        
-        rm -f "$remote_file"
+
+        local normalized_content=$(mktemp)
+        merge_secrets_content "$temp_decrypted" "$remote_timestamp" "$temp_decrypted" "$remote_timestamp" "$normalized_content" "$FORCE"
+        reencrypt_secrets "$normalized_content" "$SECRETS_FILE"
+
+        rm -f "$temp_decrypted" "$normalized_content" "$remote_file"
         log "SUCCESS" "Synced secrets from $host (new file)"
         return 0
     fi
@@ -344,26 +349,36 @@ sync_from_host() {
         return 1
     }
     
-    # Compare versions (using decrypted files for metadata comparison)
-    if ! $FORCE && ! is_newer "$remote_file" "$SECRETS_FILE"; then
-        local local_version=$(get_file_version "$SECRETS_FILE")
-        local remote_version=$(get_file_version "$remote_file")
-        log "INFO" "Local version ($local_version) is same or newer than $host ($remote_version)"
-        rm -f "$remote_file"
+    local local_timestamp
+    local_timestamp=$(get_file_timestamp "$SECRETS_FILE")
+    [[ -z "$local_timestamp" ]] && local_timestamp="$ENV_SYNC_INIT_TIMESTAMP"
+    local remote_timestamp
+    remote_timestamp=$(get_file_timestamp "$remote_file")
+    [[ -z "$remote_timestamp" ]] && remote_timestamp="$ENV_SYNC_INIT_TIMESTAMP"
+
+    local merged_content=$(mktemp)
+    merge_secrets_content "$local_decrypted" "$local_timestamp" "$remote_decrypted" "$remote_timestamp" "$merged_content" "$FORCE"
+
+    local local_content_tmp=$(mktemp)
+    get_secrets_content "$local_decrypted" > "$local_content_tmp"
+
+    if cmp -s "$local_content_tmp" "$merged_content"; then
+        log "INFO" "No key updates from $host"
+        rm -f "$remote_file" "$merged_content" "$local_content_tmp"
         return 0
     fi
-    
+
     # Create backup
     create_backup "$SECRETS_FILE"
-    
-    # Use the remote decrypted content and re-encrypt to all recipients
-    reencrypt_secrets "$remote_decrypted" "$SECRETS_FILE"
-    
-    rm -f "$remote_file"
-    
+
+    # Use merged content and re-encrypt to all recipients
+    reencrypt_secrets "$merged_content" "$SECRETS_FILE"
+
+    rm -f "$remote_file" "$merged_content" "$local_content_tmp"
+
     local remote_version=$(get_file_version "$SECRETS_FILE")
     local remote_host=$(get_file_host "$SECRETS_FILE")
-    log "SUCCESS" "Synced secrets from $host (version $remote_version)"
+    log "SUCCESS" "Merged secrets from $host (version $remote_version)"
     
     return 0
 }
@@ -449,6 +464,64 @@ find_newest_peer() {
     fi
 }
 
+# Sync from all discovered peers and merge keys
+sync_from_discovered_peers() {
+    local label="$1"
+    local strict_mode="${2:-false}"
+    local descriptor="discovered"
+    if [[ -n "$label" ]]; then
+        descriptor="${label} discovered"
+    fi
+    log "INFO" "Syncing from ${descriptor} peers..."
+
+    local peers=""
+    local discover_args=(--quiet)
+    if ! $USE_HTTP; then
+        discover_args+=(--ssh)
+    fi
+    if ! peers=$("$SCRIPT_DIR/env-sync-discover" "${discover_args[@]}"); then
+        log "WARN" "No peers discovered"
+        if [[ "$strict_mode" == "true" ]]; then
+            return 1
+        fi
+        return 0
+    fi
+
+    local success_count=0
+    while IFS= read -r peer; do
+        [[ -z "$peer" ]] && continue
+
+        # Skip self
+        local my_hostname=$(get_hostname)
+        if [[ "$peer" == "$my_hostname" ]]; then
+            continue
+        fi
+
+        # Test SSH connectivity in SCP mode
+        if ! $USE_HTTP && ! test_ssh "$peer"; then
+            continue
+        fi
+
+        if sync_from_host "$peer"; then
+            ((success_count++))
+        fi
+    done <<< "$peers"
+
+    if [[ $success_count -eq 0 ]]; then
+        log "WARN" "Failed to sync from any peer"
+        if ! $USE_HTTP; then
+            log "INFO" "Tip: Set up SSH keys with: ssh-copy-id hostname.local"
+        fi
+        if [[ "$strict_mode" == "true" ]]; then
+            return 1
+        fi
+        return 0
+    fi
+
+    log "SUCCESS" "Merged secrets from $success_count peer(s)"
+    return 0
+}
+
 # Main execution
 maybe_reencrypt_local
 
@@ -461,61 +534,7 @@ if [[ -n "$TARGET_HOST" ]]; then
     fi
     sync_from_host "$TARGET_HOST"
 elif $ALL_PEERS; then
-    # Sync from all peers (iterate and update)
-    log "INFO" "Syncing from all discovered peers..."
-    
-    peers=""
-    local discover_args=(--quiet)
-    if ! $USE_HTTP; then
-        discover_args+=(--ssh)
-    fi
-    if ! peers=$("$SCRIPT_DIR/env-sync-discover" "${discover_args[@]}"); then
-        log "WARN" "No peers discovered"
-        exit 1
-    fi
-    
-    success_count=0
-    while IFS= read -r peer; do
-        [[ -z "$peer" ]] && continue
-        
-        # Skip self
-        my_hostname=$(get_hostname)
-        if [[ "$peer" == "$my_hostname" ]]; then
-            continue
-        fi
-        
-        # Test SSH connectivity in SCP mode
-        if ! $USE_HTTP && ! test_ssh "$peer"; then
-            continue
-        fi
-        
-        if sync_from_host "$peer"; then
-            ((success_count++))
-        fi
-    done <<< "$peers"
-    
-    if [[ $success_count -eq 0 ]]; then
-        log "WARN" "Failed to sync from any peer"
-        if ! $USE_HTTP; then
-            log "INFO" "Tip: Set up SSH keys with: ssh-copy-id hostname.local"
-        fi
-        exit 1
-    else
-        log "SUCCESS" "Synced from $success_count peer(s)"
-    fi
+    sync_from_discovered_peers "all" "true"
 else
-    # Auto mode: find newest peer and sync
-    log "INFO" "Searching for newest secrets via $(if $USE_HTTP; then echo "HTTP"; else echo "SCP/SSH"; fi)..."
-    
-    newest_host=""
-    if ! newest_host=$(find_newest_peer); then
-        log "INFO" "No newer secrets found on network"
-        if ! $USE_HTTP; then
-            log "INFO" "To sync without SSH keys, use: env-sync --insecure-http"
-        fi
-        exit 0
-    fi
-    
-    log "INFO" "Newest secrets found on: $newest_host"
-    sync_from_host "$newest_host"
+    sync_from_discovered_peers "" "false"
 fi
