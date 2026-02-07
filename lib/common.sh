@@ -10,6 +10,8 @@ ENV_SYNC_PORT="5739"
 ENV_SYNC_SERVICE="_envsync._tcp"
 ENV_SYNC_INIT_TIMESTAMP="${ENV_SYNC_INIT_TIMESTAMP:-1970-01-01T00:00:00Z}"
 ENV_SYNC_KEY_UPDATED_AT_PREFIX="# ENV_SYNC_UPDATED_AT:"
+ENV_SYNC_KEY_REGEX='[A-Za-z_][A-Za-z0-9_]*'
+ENV_SYNC_TIMESTAMP_REGEX='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z'
 SECRETS_FILE="${HOME}/.secrets.env"
 CONFIG_DIR="${HOME}/.config/env-sync"
 BACKUP_DIR="${CONFIG_DIR}/backups"
@@ -404,6 +406,9 @@ merge_secrets_content() {
     local incoming_fallback_ts="${4:-}"
     local output_file="$5"
     local force_override="${6:-false}"
+    local key_regex="$ENV_SYNC_KEY_REGEX"
+    local ts_regex="$ENV_SYNC_TIMESTAMP_REGEX"
+    local meta_regex="^${ENV_SYNC_KEY_UPDATED_AT_PREFIX}[[:space:]]+(${key_regex})[[:space:]]+(${ts_regex})$"
 
     [[ -z "$base_fallback_ts" ]] && base_fallback_ts="$ENV_SYNC_INIT_TIMESTAMP"
     [[ -z "$incoming_fallback_ts" ]] && incoming_fallback_ts="$ENV_SYNC_INIT_TIMESTAMP"
@@ -425,20 +430,20 @@ merge_secrets_content() {
 
     for i in "${!lines[@]}"; do
         local line="${lines[$i]}"
-        if [[ "$line" =~ ^#\ ENV_SYNC_UPDATED_AT:\ ([A-Za-z_][A-Za-z0-9_]*)[[:space:]]+(.+)$ ]]; then
+        if [[ "$line" =~ $meta_regex ]]; then
             local meta_key="${BASH_REMATCH[1]}"
             local meta_ts="${BASH_REMATCH[2]}"
             base_meta_ts["$meta_key"]="$meta_ts"
             base_meta_index["$meta_key"]="$i"
             continue
         fi
-        if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+        if [[ "$line" =~ ^export[[:space:]]+(${key_regex})= ]]; then
             local key="${BASH_REMATCH[1]}"
             base_key_index["$key"]="$i"
             base_key_ts["$key"]="${base_meta_ts[$key]:-$base_fallback_ts}"
             continue
         fi
-        if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+        if [[ "$line" =~ ^(${key_regex})= ]]; then
             local key="${BASH_REMATCH[1]}"
             base_key_index["$key"]="$i"
             base_key_ts["$key"]="${base_meta_ts[$key]:-$base_fallback_ts}"
@@ -451,19 +456,19 @@ merge_secrets_content() {
 
     if [[ -n "$incoming_content" ]]; then
         while IFS= read -r line; do
-            if [[ "$line" =~ ^#\ ENV_SYNC_UPDATED_AT:\ ([A-Za-z_][A-Za-z0-9_]*)[[:space:]]+(.+)$ ]]; then
+            if [[ "$line" =~ $meta_regex ]]; then
                 incoming_meta_ts["${BASH_REMATCH[1]}"]="${BASH_REMATCH[2]}"
             fi
         done < <(printf '%s\n' "$incoming_content")
 
         while IFS= read -r line; do
-            if [[ "$line" =~ ^export[[:space:]]+([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+            if [[ "$line" =~ ^export[[:space:]]+(${key_regex})= ]]; then
                 local key="${BASH_REMATCH[1]}"
                 incoming_lines["$key"]="$line"
                 incoming_ts["$key"]="${incoming_meta_ts[$key]:-$incoming_fallback_ts}"
                 continue
             fi
-            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)= ]]; then
+            if [[ "$line" =~ ^(${key_regex})= ]]; then
                 local key="${BASH_REMATCH[1]}"
                 incoming_lines["$key"]="$line"
                 incoming_ts["$key"]="${incoming_meta_ts[$key]:-$incoming_fallback_ts}"
@@ -471,19 +476,20 @@ merge_secrets_content() {
         done < <(printf '%s\n' "$incoming_content")
     fi
 
-    local merged=false
     for key in "${!incoming_lines[@]}"; do
         local remote_ts="${incoming_ts[$key]:-$incoming_fallback_ts}"
         if [[ -z "${base_key_index[$key]+x}" ]]; then
-            if [[ ${#lines[@]} -gt 0 && -n "${lines[$(( ${#lines[@]} - 1 ))]}" ]]; then
-                lines+=("")
+            if [[ ${#lines[@]} -gt 0 ]]; then
+                local last_index=$(( ${#lines[@]} - 1 ))
+                if [[ -n "${lines[$last_index]}" ]]; then
+                    lines+=("")
+                fi
             fi
             lines+=("$(format_key_updated_at_line "$key" "$remote_ts")")
             lines+=("${incoming_lines[$key]}")
             base_key_index["$key"]=$(( ${#lines[@]} - 1 ))
             base_meta_index["$key"]=$(( ${#lines[@]} - 2 ))
             base_key_ts["$key"]="$remote_ts"
-            merged=true
             continue
         fi
 
@@ -496,17 +502,15 @@ merge_secrets_content() {
                 base_meta_index["$key"]=$(( ${#lines[@]} - 1 ))
             fi
             base_key_ts["$key"]="$remote_ts"
-            merged=true
             continue
         fi
 
         local local_ts="${base_key_ts[$key]:-$base_fallback_ts}"
         local ts_result=0
-        if compare_timestamps "$remote_ts" "$local_ts"; then
-            ts_result=0
-        else
-            ts_result=$?
-        fi
+        set +e
+        compare_timestamps "$remote_ts" "$local_ts"
+        ts_result=$?
+        set -e
         if [[ $ts_result -eq 1 ]]; then
             lines[${base_key_index[$key]}]="${incoming_lines[$key]}"
             if [[ -n "${base_meta_index[$key]+x}" ]]; then
@@ -516,7 +520,6 @@ merge_secrets_content() {
                 base_meta_index["$key"]=$(( ${#lines[@]} - 1 ))
             fi
             base_key_ts["$key"]="$remote_ts"
-            merged=true
         fi
     done
 
@@ -525,14 +528,13 @@ merge_secrets_content() {
             local ts="${base_key_ts[$key]:-$base_fallback_ts}"
             lines+=("$(format_key_updated_at_line "$key" "$ts")")
             base_meta_index["$key"]=$(( ${#lines[@]} - 1 ))
-            merged=true
         fi
     done
 
     local filtered_lines=()
     for i in "${!lines[@]}"; do
         local line="${lines[$i]}"
-        if [[ "$line" =~ ^#\ ENV_SYNC_UPDATED_AT:\ ([A-Za-z_][A-Za-z0-9_]*)[[:space:]]+ ]]; then
+        if [[ "$line" =~ $meta_regex ]]; then
             local meta_key="${BASH_REMATCH[1]}"
             if [[ -z "${base_key_index[$meta_key]+x}" ]]; then
                 continue
@@ -544,11 +546,11 @@ merge_secrets_content() {
         filtered_lines+=("$line")
     done
 
-    printf '%s\n' "${filtered_lines[@]}" > "$output_file"
-    if $merged; then
-        return 0
+    if [[ ${#filtered_lines[@]} -eq 0 ]]; then
+        : > "$output_file"
+    else
+        printf '%s\n' "${filtered_lines[@]}" > "$output_file"
     fi
-
     return 0
 }
 

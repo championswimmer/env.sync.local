@@ -296,7 +296,7 @@ YWdlLWVuY3J5cHRpb24ub3JnL3Yx...
 Inside the encrypted payload, each key includes a per-key timestamp comment used for merging:
 ```
 # ENV_SYNC_UPDATED_AT: OPENAI_API_KEY 2026-02-07T15:30:45Z
-OPENAI_API_KEY="sk-..."
+OPENAI_API_KEY="sk-example-key-redacted"
 ```
 
 ## How It Works
