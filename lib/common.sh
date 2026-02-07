@@ -10,7 +10,7 @@ ENV_SYNC_PORT="5739"
 ENV_SYNC_SERVICE="_envsync._tcp"
 ENV_SYNC_INIT_TIMESTAMP="${ENV_SYNC_INIT_TIMESTAMP:-1970-01-01T00:00:00Z}"
 ENV_SYNC_KEY_UPDATED_AT_MARKER="ENV_SYNC_UPDATED_AT"
-ENV_SYNC_KEY_UPDATED_AT_COMMENT="#${ENV_SYNC_KEY_UPDATED_AT_MARKER}"
+ENV_SYNC_KEY_UPDATED_AT_COMMENT_PREFIX="#${ENV_SYNC_KEY_UPDATED_AT_MARKER}"
 ENV_SYNC_KEY_REGEX='[A-Za-z_][A-Za-z0-9_]*'
 ENV_SYNC_TIMESTAMP_REGEX='[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z'
 SECRETS_FILE="${HOME}/.secrets.env"
@@ -394,16 +394,25 @@ set_secrets_content() {
 extract_key_updated_at_timestamp() {
     local line="$1"
     local ts_regex="$ENV_SYNC_TIMESTAMP_REGEX"
-    if [[ "$line" =~ [[:space:]]#${ENV_SYNC_KEY_UPDATED_AT_MARKER}[[:space:]]+(${ts_regex}) ]]; then
+    local marker_regex
+    marker_regex=$(escape_key_updated_at_marker_for_regex)
+    if [[ "$line" =~ [[:space:]]*#${marker_regex}[[:space:]]+(${ts_regex}) ]]; then
         echo "${BASH_REMATCH[1]}"
     fi
+}
+
+# Escape marker for regex usage
+escape_key_updated_at_marker_for_regex() {
+    printf '%s' "$ENV_SYNC_KEY_UPDATED_AT_MARKER" | sed -E 's/[][\\^$.*+?{}|()]/\\&/g'
 }
 
 # Strip inline updated-at comment from a line
 strip_key_updated_at_comment() {
     local line="$1"
     local ts_regex="$ENV_SYNC_TIMESTAMP_REGEX"
-    echo "$line" | sed -E "s/[[:space:]]#${ENV_SYNC_KEY_UPDATED_AT_MARKER}[[:space:]]+${ts_regex}[[:space:]]*$//"
+    local marker_regex
+    marker_regex=$(escape_key_updated_at_marker_for_regex)
+    echo "$line" | sed -E "s/[[:space:]]*#${marker_regex}[[:space:]]+${ts_regex}[[:space:]]*$//"
 }
 
 # Append per-key updated-at comment to a line
@@ -412,7 +421,20 @@ append_key_updated_at_comment() {
     local timestamp="$2"
     local clean_line
     clean_line=$(strip_key_updated_at_comment "$line")
-    echo "${clean_line} ${ENV_SYNC_KEY_UPDATED_AT_COMMENT} ${timestamp}"
+    echo "${clean_line} ${ENV_SYNC_KEY_UPDATED_AT_COMMENT_PREFIX} ${timestamp}"
+}
+
+# Ensure a line has an updated-at comment, using fallback if missing
+ensure_key_updated_at_comment() {
+    local line="$1"
+    local existing_timestamp="$2"
+    local fallback_timestamp="$3"
+
+    if [[ -n "$existing_timestamp" ]]; then
+        echo "$line"
+    else
+        append_key_updated_at_comment "$line" "$fallback_timestamp"
+    fi
 }
 
 # Merge secrets content from two files based on per-key timestamps.
@@ -442,17 +464,14 @@ merge_secrets_content() {
 
     declare -A base_key_index=()
     declare -A base_key_ts=()
-    declare -A base_key_by_index=()
-
     for i in "${!lines[@]}"; do
         local line="${lines[$i]}"
         if [[ "$line" =~ ^export[[:space:]]+(${key_regex})= ]]; then
             local key="${BASH_REMATCH[1]}"
             local updated_at
             updated_at=$(extract_key_updated_at_timestamp "$line")
-            lines[$i]=$(strip_key_updated_at_comment "$line")
+            lines[$i]=$(ensure_key_updated_at_comment "$line" "$updated_at" "$base_fallback_ts")
             base_key_index["$key"]="$i"
-            base_key_by_index["$i"]="$key"
             base_key_ts["$key"]="${updated_at:-$base_fallback_ts}"
             continue
         fi
@@ -460,9 +479,8 @@ merge_secrets_content() {
             local key="${BASH_REMATCH[1]}"
             local updated_at
             updated_at=$(extract_key_updated_at_timestamp "$line")
-            lines[$i]=$(strip_key_updated_at_comment "$line")
+            lines[$i]=$(ensure_key_updated_at_comment "$line" "$updated_at" "$base_fallback_ts")
             base_key_index["$key"]="$i"
-            base_key_by_index["$i"]="$key"
             base_key_ts["$key"]="${updated_at:-$base_fallback_ts}"
         fi
     done
@@ -476,7 +494,7 @@ merge_secrets_content() {
                 local key="${BASH_REMATCH[1]}"
                 local updated_at
                 updated_at=$(extract_key_updated_at_timestamp "$line")
-                incoming_lines["$key"]=$(strip_key_updated_at_comment "$line")
+                incoming_lines["$key"]=$(ensure_key_updated_at_comment "$line" "$updated_at" "$incoming_fallback_ts")
                 incoming_ts["$key"]="${updated_at:-$incoming_fallback_ts}"
                 continue
             fi
@@ -484,7 +502,7 @@ merge_secrets_content() {
                 local key="${BASH_REMATCH[1]}"
                 local updated_at
                 updated_at=$(extract_key_updated_at_timestamp "$line")
-                incoming_lines["$key"]=$(strip_key_updated_at_comment "$line")
+                incoming_lines["$key"]=$(ensure_key_updated_at_comment "$line" "$updated_at" "$incoming_fallback_ts")
                 incoming_ts["$key"]="${updated_at:-$incoming_fallback_ts}"
             fi
         done < <(printf '%s\n' "$incoming_content")
@@ -501,7 +519,6 @@ merge_secrets_content() {
             fi
             lines+=("${incoming_lines[$key]}")
             base_key_index["$key"]=$(( ${#lines[@]} - 1 ))
-            base_key_by_index["${base_key_index[$key]}"]="$key"
             base_key_ts["$key"]="$remote_ts"
             continue
         fi
@@ -524,22 +541,10 @@ merge_secrets_content() {
         fi
     done
 
-    local output_lines=()
-    for i in "${!lines[@]}"; do
-        local line="${lines[$i]}"
-        if [[ -n "${base_key_by_index[$i]+x}" ]]; then
-            local key="${base_key_by_index[$i]}"
-            local ts="${base_key_ts[$key]:-$base_fallback_ts}"
-            output_lines+=("$(append_key_updated_at_comment "$line" "$ts")")
-        else
-            output_lines+=("$line")
-        fi
-    done
-
-    if [[ ${#output_lines[@]} -eq 0 ]]; then
+    if [[ ${#lines[@]} -eq 0 ]]; then
         : > "$output_file"
     else
-        printf '%s\n' "${output_lines[@]}" > "$output_file"
+        printf '%s\n' "${lines[@]}" > "$output_file"
     fi
     return 0
 }
