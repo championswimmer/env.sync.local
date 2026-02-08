@@ -109,7 +109,7 @@ fi
 
 if [ -z "${ENV_SYNC_GO_BIN:-}" ]; then
     if [ $SKIP_GO_BUILD -eq 1 ]; then
-        ENV_SYNC_GO_BIN="legacy/bin/env-sync"
+        ENV_SYNC_GO_BIN="target/env-sync"
     else
         ENV_SYNC_GO_BIN="target/env-sync"
     fi
@@ -198,6 +198,24 @@ build_go_binary() {
         bash -c 'mkdir -p /workspace/target && /usr/local/go/bin/go build -o /workspace/target/env-sync ./cmd/env-sync'
 }
 
+# Function to create a placeholder Go binary for legacy-only tests
+ensure_go_stub() {
+    local stub_path="$SCRIPT_DIR/target/env-sync"
+
+    if [ -x "$stub_path" ]; then
+        return
+    fi
+
+    print_warning "Go binary missing; creating placeholder for legacy-only tests."
+    mkdir -p "$SCRIPT_DIR/target"
+    cat > "$stub_path" << 'EOF'
+#!/bin/sh
+echo "env-sync Go binary not built for legacy-only tests." >&2
+exit 1
+EOF
+    chmod +x "$stub_path"
+}
+
 # Function to setup test environment
 setup_environment() {
     print_info "Setting up test environment..."
@@ -206,6 +224,7 @@ setup_environment() {
         build_go_binary
     else
         print_info "Skipping Go build (--skip-go-build)"
+        ensure_go_stub
     fi
 
     # Generate SSH keys
