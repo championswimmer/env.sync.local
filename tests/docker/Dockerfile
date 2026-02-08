@@ -38,13 +38,20 @@ RUN sed -i 's/#enable-dbus=yes/enable-dbus=yes/' /etc/avahi/avahi-daemon.conf
 RUN sed -i 's/hosts:.*files dns/hosts: files mdns_minimal [NOTFOUND=return] dns mdns/' /etc/nsswitch.conf
 
 # Copy env-sync binaries (built from source)
-COPY legacy/bin/ /usr/local/bin/
-COPY legacy/lib/ /usr/local/lib/
 ARG ENV_SYNC_GO_BIN=target/env-sync
-COPY ${ENV_SYNC_GO_BIN} /usr/local/bin/env-sync-go
+COPY ${ENV_SYNC_GO_BIN} /usr/local/bin/env-sync
+RUN ln -sf env-sync /usr/local/bin/env-sync-discover && \
+    ln -sf env-sync /usr/local/bin/env-sync-client && \
+    ln -sf env-sync /usr/local/bin/env-sync-serve && \
+    ln -sf env-sync /usr/local/bin/env-sync-key && \
+    ln -sf env-sync /usr/local/bin/env-sync-load
+
+RUN mkdir -p /usr/local/lib/env-sync/legacy/bin /usr/local/lib/env-sync/legacy/lib
+COPY legacy/bin/ /usr/local/lib/env-sync/legacy/bin/
+COPY legacy/lib/ /usr/local/lib/env-sync/legacy/lib/
 
 # Make scripts executable
-RUN chmod +x /usr/local/bin/env-sync*
+RUN chmod +x /usr/local/bin/env-sync /usr/local/lib/env-sync/legacy/bin/env-sync*
 
 # Create env-sync directories for envsync user
 RUN mkdir -p /home/envsync/.config/env-sync/keys/known_hosts && \

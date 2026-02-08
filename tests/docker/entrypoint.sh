@@ -11,8 +11,14 @@ KNOWN_HOSTS_FILE="${USER_HOME}/.ssh/known_hosts"
 SSH_CONFIG_FILE="${USER_HOME}/.ssh/config"
 KEYSCAN_TIMEOUT="${ENV_SYNC_KEYSCAN_TIMEOUT:-1}"
 KEYSCAN_ATTEMPTS="${ENV_SYNC_KEYSCAN_ATTEMPTS:-3}"
+LEGACY_BIN_DIR="/usr/local/lib/env-sync/legacy/bin"
 
 echo "[entrypoint] Starting env-sync test container: $HOSTNAME"
+
+if [ -n "${ENV_SYNC_USE_BASH:-}" ]; then
+    export PATH="${LEGACY_BIN_DIR}:${PATH}"
+    echo "[entrypoint] ENV_SYNC_USE_BASH set; using legacy scripts from ${LEGACY_BIN_DIR}"
+fi
 
 # Create a writable SSH directory since the mounted one is read-only
 echo "[entrypoint] Setting up writable SSH directory..."
