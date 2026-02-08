@@ -1,0 +1,186 @@
+#!/bin/bash
+# env-sync-load: Load secrets for shell integration with transparent decryption
+# Usage: env-sync-load [options]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+GO_BIN="${ENV_SYNC_GO_BIN:-}"
+if [[ -z "$GO_BIN" ]]; then
+    if [[ -x "$SCRIPT_DIR/env-sync-go" ]]; then
+        GO_BIN="$SCRIPT_DIR/env-sync-go"
+    else
+        GO_BIN="$ROOT_DIR/target/env-sync"
+    fi
+fi
+
+if [[ "${ENV_SYNC_USE_BASH:-}" != "true" && -x "$GO_BIN" ]]; then
+    exec -a env-sync-load "$GO_BIN" "$@"
+fi
+
+source "$SCRIPT_DIR/../lib/common.sh"
+
+# Parse arguments
+FORMAT="env"
+KEY_FILTER=""
+DECRYPT_ONLY=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --format)
+            FORMAT="$2"
+            shift 2
+            ;;
+        --key)
+            KEY_FILTER="$2"
+            shift 2
+            ;;
+        --decrypt-only)
+            DECRYPT_ONLY=true
+            shift
+            ;;
+        --quiet)
+            ENV_SYNC_QUIET=true
+            shift
+            ;;
+        --help)
+            echo "Usage: env-sync load [options]"
+            echo ""
+            echo "Load and decrypt secrets for shell integration."
+            echo "Outputs export statements suitable for eval."
+            echo ""
+            echo "Options:"
+            echo "  --format <env|json>    Output format (default: env)"
+            echo "  --key <name>           Load only specific key"
+            echo "  --decrypt-only         Output decrypted content without parsing"
+            echo "  --quiet                Suppress output"
+            echo "  --help                 Show this help"
+            echo ""
+            echo "Examples:"
+            echo '  eval "$(env-sync load)"                    # Load all secrets'
+            echo '  eval "$(env-sync load --quiet)"            # Silent load'
+            echo '  env-sync load --format json                # Output as JSON'
+            echo '  env-sync load --key OPENAI_API_KEY         # Load specific key'
+            echo ""
+            echo "Shell Integration:"
+            echo "  Add this to your ~/.bashrc or ~/.zshrc:"
+            echo '  eval "$(env-sync load 2>/dev/null)"'
+            exit 0
+            ;;
+        *)
+            log "ERROR" "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Check if secrets file exists
+if [[ ! -f "$SECRETS_FILE" ]]; then
+    if ! $ENV_SYNC_QUIET; then
+        log "ERROR" "Secrets file not found: $SECRETS_FILE"
+    fi
+    exit 1
+fi
+
+# Decrypt if needed
+if is_file_encrypted "$SECRETS_FILE"; then
+    if ! can_decrypt_file "$SECRETS_FILE"; then
+        if ! $ENV_SYNC_QUIET; then
+            log "ERROR" "Cannot decrypt secrets file - not in recipient list"
+            log "INFO" "Run 'env-sync key request-access --trigger-all' to request access"
+        fi
+        exit 1
+    fi
+    
+    # Decrypt to temp file
+    TEMP_DECRYPTED=$(mktemp)
+    trap "rm -f $TEMP_DECRYPTED" EXIT
+    
+    if ! decrypt_secrets_file "$SECRETS_FILE" "$TEMP_DECRYPTED"; then
+        if ! $ENV_SYNC_QUIET; then
+            log "ERROR" "Failed to decrypt secrets file"
+        fi
+        exit 1
+    fi
+    
+    CONTENT_FILE="$TEMP_DECRYPTED"
+else
+    # Not encrypted, read directly
+    CONTENT_FILE="$SECRETS_FILE"
+fi
+
+# Output based on format
+case "$FORMAT" in
+    env)
+        if $DECRYPT_ONLY; then
+            # Just output the decrypted content as-is
+            cat "$CONTENT_FILE"
+        else
+            # Parse and output export statements
+            while IFS= read -r line; do
+                # Skip comments and empty lines
+                [[ "$line" =~ ^[[:space:]]*# ]] && continue
+                [[ -z "$line" ]] && continue
+                
+                # Check if it's a KEY=value format
+                if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+                    key="${line%%=*}"
+                    
+                    # Filter if specific key requested
+                    if [[ -n "$KEY_FILTER" ]] && [[ "$key" != "$KEY_FILTER" ]]; then
+                        continue
+                    fi
+                    
+                    # Output export statement
+                    echo "export $line"
+                fi
+            done < "$CONTENT_FILE"
+        fi
+        ;;
+        
+    json)
+        # Output as JSON
+        echo "{"
+        local first=true
+        while IFS= read -r line; do
+            # Skip comments and empty lines
+            [[ "$line" =~ ^[[:space:]]*# ]] && continue
+            [[ -z "$line" ]] && continue
+            
+            # Check if it's a KEY=value format
+            if [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+                key="${line%%=*}"
+                value="${line#*=}"
+                
+                # Remove quotes if present
+                value="${value#\"}"
+                value="${value%\"}"
+                value="${value#'"'"'"'"'}"
+                value="${value%'"'"'"'"'}"
+                
+                # Filter if specific key requested
+                if [[ -n "$KEY_FILTER" ]] && [[ "$key" != "$KEY_FILTER" ]]; then
+                    continue
+                fi
+                
+                # Add comma if not first
+                if ! $first; then
+                    echo ","
+                fi
+                first=false
+                
+                # Escape special characters
+                escaped_value=$(echo "$value" | sed 's/\\/\\\\/g; s/"/\\"/g')
+                echo -n "  \"$key\": \"$escaped_value\""
+            fi
+        done < "$CONTENT_FILE"
+        echo ""
+        echo "}"
+        ;;
+        
+    *)
+        log "ERROR" "Unknown format: $FORMAT"
+        exit 1
+        ;;
+esac

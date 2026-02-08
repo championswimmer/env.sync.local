@@ -19,6 +19,8 @@
 4. **Backup**: Always backup before overwriting (keep last 5)
 5. **Update**: Replace local file and update metadata
 
+**Runtime Note**: The Go implementation (`src/cmd/env-sync`) is the default runtime. Legacy Bash lives under `legacy/` and can be forced with `ENV_SYNC_USE_BASH=true` when needed for compatibility or testing.
+
 ## File Structure
 
 ```
@@ -26,20 +28,19 @@ env.sync.local/
 ├── PLAN.md                    # Detailed implementation plan & roadmap
 ├── README.md                  # User documentation & installation guide
 ├── AGENTS.md                  # This file - internal dev documentation
-├── install.sh                 # Installation script (system or user)
-├── bin/                       # Executable scripts
-│   ├── env-sync              # Main CLI entry point
-│   ├── env-sync-discover     # mDNS peer discovery tool
-│   ├── env-sync-client       # HTTP client for fetching secrets
-│   └── env-sync-serve        # HTTP server for serving secrets
-└── lib/                       # Shared libraries
-    └── common.sh             # Common functions & utilities
+├── install.sh                 # Installation script (builds Go binary)
+├── bin/                       # Go shims/symlinks (default entrypoints)
+├── legacy/                    # Legacy Bash implementation
+│   ├── bin/                   # Legacy CLI scripts
+│   └── lib/                   # Legacy shared functions
+└── src/                       # Go source code
+    └── cmd/env-sync           # Go CLI entrypoint
 ```
 
 ## File Descriptions
 
-### bin/env-sync (Main CLI)
-**Purpose**: Main entry point and command router
+### Go CLI (src/cmd/env-sync)
+**Purpose**: Primary Go implementation and command router (default runtime)
 **Usage**: `env-sync [command] [options]`
 
 **Commands**:
@@ -52,14 +53,29 @@ env.sync.local/
 - `cron`: Manage cron job
 
 **Key Implementation Details**:
-- Sources `../lib/common.sh` for shared functions
-- Routes to appropriate sub-command functions
-- Handles argument parsing for each command
+- Command names are derived from argv[0], so shims/symlinks (`env-sync-client`, `env-sync-discover`, etc.) map to one binary
+- Lives in `src/cmd/env-sync` with supporting packages under `src/internal`
 - Exit codes: 0=success, 1=error
 
-### bin/env-sync-discover
-**Purpose**: Discover env-sync peers on local network
-**Usage**: `env-sync-discover [options]`
+### bin/env-sync (Shim)
+**Purpose**: Wrapper that prefers the Go binary and optionally routes to legacy Bash
+**Behavior**:
+- Locates Go binary from `target/env-sync` in dev or `/usr/local/lib/env-sync/env-sync-go` when installed
+- If `ENV_SYNC_USE_BASH=true`, dispatches to `legacy/bin/<command>` using the same argv[0]
+- Symlinked entrypoints (`env-sync-client`, `env-sync-discover`, `env-sync-serve`, `env-sync-key`, `env-sync-load`) all point here
+
+### legacy/bin/env-sync (Legacy Bash CLI)
+**Purpose**: Legacy Bash entrypoint and command router
+**Usage**: `ENV_SYNC_USE_BASH=true env-sync [command] [options]`
+
+**Key Implementation Details**:
+- Sources `legacy/lib/common.sh` for shared functions
+- Mirrors Go command surface for compatibility
+- Exit codes: 0=success, 1=error
+
+### legacy/bin/env-sync-discover
+**Purpose**: Discover env-sync peers on local network (legacy Bash)
+**Usage**: `legacy/bin/env-sync-discover [options]` or `ENV_SYNC_USE_BASH=true env-sync discover`
 
 **Discovery Methods**:
 - **Linux**: Uses `avahi-browse` (avahi-utils package)
@@ -76,9 +92,9 @@ env.sync.local/
 - Timeout configurable (default: 5 seconds)
 - Removes self from results
 
-### bin/env-sync-client
-**Purpose**: Fetch and sync secrets from peers using SCP (SSH) by default
-**Usage**: `env-sync-client [options] [hostname]`
+### legacy/bin/env-sync-client
+**Purpose**: Fetch and sync secrets from peers using SCP (SSH) by default (legacy Bash)
+**Usage**: `legacy/bin/env-sync-client [options] [hostname]` or `ENV_SYNC_USE_BASH=true env-sync sync`
 
 **Modes**:
 - **SCP** (default): Secure copy over SSH - requires SSH keys set up
@@ -103,9 +119,9 @@ env.sync.local/
 - Validates fetched files before applying
 - Validates checksums
 
-### bin/env-sync-serve
-**Purpose**: HTTP server for serving secrets file
-**Usage**: `env-sync-serve [options]`
+### legacy/bin/env-sync-serve
+**Purpose**: HTTP server for serving secrets file (legacy Bash)
+**Usage**: `legacy/bin/env-sync-serve [options]`
 
 **Endpoints**:
 - `GET /health`: JSON status response
@@ -123,9 +139,9 @@ env.sync.local/
 - Runs in foreground or daemon mode
 - Creates PID file at `~/.config/env-sync/server.pid`
 
-### lib/common.sh
+### legacy/lib/common.sh
 **Purpose**: Shared functions and utilities
-**Sourced by**: All other scripts
+**Sourced by**: All legacy scripts
 
 **Key Functions**:
 
@@ -155,7 +171,7 @@ env.sync.local/
 
 **Configuration Variables**:
 ```bash
-ENV_SYNC_VERSION="1.0.0"    # Tool version
+ENV_SYNC_VERSION="2.0.0"    # Tool version
 ENV_SYNC_PORT="5739"         # Server port
 ENV_SYNC_SERVICE="_envsync._tcp"
 SECRETS_FILE="$HOME/.secrets.env"
@@ -166,7 +182,7 @@ MAX_BACKUPS=5
 ```
 
 ### install.sh
-**Purpose**: Installation script
+**Purpose**: Installation script (builds Go binary by default)
 **Usage**: `./install.sh [--user]`
 
 **Install Locations**:
@@ -174,10 +190,10 @@ MAX_BACKUPS=5
 - User: `~/.local/bin/`, `~/.local/lib/env-sync/`
 
 **Actions**:
-1. Check dependencies (curl, nc, avahi-utils/dns-sd)
-2. Create directories
-3. Copy binaries and libraries
-4. Make scripts executable
+1. Builds Go binary from `src/cmd/env-sync`
+2. Installs shims to `$BIN_DIR` and Go binary to `$LIB_DIR/env-sync-go`
+3. Installs legacy Bash implementation into `$LIB_DIR/legacy` for compatibility/tests
+4. Creates symlinks for subcommands (env-sync-client, discover, serve, key, load)
 5. Verify installation
 
 ## Secrets File Format
@@ -215,25 +231,19 @@ AWS_ACCESS_KEY_ID="AKIA..."
 ## Dependencies
 
 ### Required
-- `bash` (v4.0+)
-- `curl` (for HTTP requests)
-- `nc` or `netcat` (for HTTP server)
-- `sha256sum` (for checksums)
-- `date` (with -d/-I support)
+- `go` (1.24+) for building the primary binary
+- `bash` (v4.0+) for legacy compatibility and test scripts
 
-### Platform-Specific
+### Optional (primarily for legacy Bash paths)
+- `curl` (HTTP fallback in legacy client)
+- `nc` or `netcat` (legacy HTTP server)
+- `sha256sum` (legacy checksum generation)
+- `date` with `-d/-I` support
 
-**Linux**:
-- `avahi-daemon` (running)
-- `avahi-utils` (avahi-browse)
-- Optional: `nss-mdns` (for .local resolution)
-
-**macOS**:
-- Built-in: `dns-sd` (no additional packages)
-
-**Windows**:
-- WSL2 with Linux dependencies
-- Or: Bonjour SDK for Windows
+### Platform-Specific (Discovery utilities)
+- Linux: `avahi-daemon` + `avahi-utils` (`avahi-browse`)
+- macOS: `dns-sd` (built-in)
+- Windows: WSL2 with Linux dependencies or Bonjour SDK
 
 ## Data Flow
 
@@ -319,23 +329,26 @@ env-sync --quiet          # Silent mode
 
 ### Manual Testing Commands
 ```bash
-# Test discovery
-./bin/env-sync-discover --verbose
+# Test discovery (Go default)
+env-sync discover --verbose
 
 # Test server (foreground)
-./bin/env-sync-serve --port 9999
+env-sync serve --port 9999
 
 # Test client (dry run)
-./bin/env-sync-client hostname.local
+env-sync sync hostname.local
 
 # Test full sync
-./bin/env-sync sync -f
+env-sync sync -f
 
 # Check status
-./bin/env-sync status
+env-sync status
 
 # View logs
 tail -f ~/.config/env-sync/logs/env-sync.log
+
+# Force legacy Bash for comparison
+ENV_SYNC_USE_BASH=true env-sync status
 ```
 
 ### Validation Checklist
@@ -385,15 +398,12 @@ export ENV_SYNC_PORT=5740
 
 ## Version History & Roadmap
 
-### Current (v1.0.0)
-- ✅ Core sync functionality
-- ✅ SCP/SSH sync (secure by default)
-- ✅ mDNS discovery (Linux/macOS)
-- ✅ HTTP server/client (insecure fallback)
-- ✅ Version comparison
-- ✅ Backup system
-- ✅ Cron automation
-- ✅ Security warnings for HTTP mode
+### Current (v2.0.0)
+- ✅ Go implementation is the default runtime (shimmed entrypoints)
+- ✅ Legacy Bash implementation preserved under `legacy/` (opt-in via `ENV_SYNC_USE_BASH=true`)
+- ✅ SCP/SSH sync (secure by default) with mDNS discovery
+- ✅ HTTP server/client fallback (with warnings)
+- ✅ Version comparison, backups, cron automation, encryption helpers
 
 ### Future Enhancements
 - [ ] Native Windows support (no WSL)

@@ -1,0 +1,825 @@
+#!/bin/bash
+# env-sync: Main CLI for distributed secrets synchronization
+# Usage: env-sync [command] [options]
+#
+# Commands:
+#   sync           Sync secrets from network (default)
+#   serve          Start HTTP server
+#   discover       Discover peers on network
+#   status         Show sync status
+#   init           Initialize secrets file
+#   restore        Restore from backup
+#   cron           Setup cron job for periodic sync
+#   help           Show help
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+GO_BIN="${ENV_SYNC_GO_BIN:-}"
+if [[ -z "$GO_BIN" ]]; then
+    if [[ -x "$SCRIPT_DIR/env-sync-go" ]]; then
+        GO_BIN="$SCRIPT_DIR/env-sync-go"
+    else
+        GO_BIN="$ROOT_DIR/target/env-sync"
+    fi
+fi
+
+if [[ "${ENV_SYNC_USE_BASH:-}" != "true" && -x "$GO_BIN" ]]; then
+    exec -a env-sync "$GO_BIN" "$@"
+fi
+
+source "$SCRIPT_DIR/../lib/common.sh"
+
+# Default command
+COMMAND="${1:-sync}"
+shift || true
+
+# Show help
+show_help() {
+    cat << 'EOF'
+env-sync - Distributed secrets synchronization tool
+
+Usage: env-sync [command] [options]
+
+SECURITY NOTICE:
+  By default, env-sync uses SCP (SSH) for secure peer-to-peer synchronization.
+  This requires SSH keys to be set up between machines.
+  
+  HTTP mode (--insecure-http) is available as a fallback but is INSECURE:
+  • Secrets transmitted in plaintext
+  • Accessible to any device on the network
+  • No authentication required
+
+Commands:
+  sync [options]           Sync secrets from network (default)
+    Options:
+      -a, --all            Sync from all discovered peers
+      -f, --force          Force sync even if local is newer
+      -q, --quiet          Quiet mode
+      --insecure-http      Use insecure HTTP instead of SCP (not recommended)
+      -h, --help           Show help
+
+  serve [options]          Start HTTP server (for HTTP mode only)
+    Options:
+      -p, --port PORT      Port to listen on (default: 5739)
+      -d, --daemon         Run as daemon
+      -q, --quiet          Quiet mode
+      -h, --help           Show help
+
+  discover [options]       Discover peers on network
+    Options:
+      -t, --timeout SECS   Discovery timeout (default: 5)
+      -q, --quiet          Only output hostnames
+      -v, --verbose        Verbose output
+      --ssh                Filter for hosts with SSH access
+      -h, --help           Show help
+
+  status                   Show sync status and peer information
+
+  init                     Initialize new secrets file
+
+  restore [n]              Restore from backup (n=1-5, default: 1)
+
+  key [subcommand]         Manage AGE encryption keys
+    Subcommands:
+      show                 Show this machine's public key
+      export               Export public key
+      import <pubkey>      Import a peer's public key
+      list                 List all cached public keys
+      request-access       Request access for new machine
+      grant-access         Grant access to requesting machine
+
+  load [options]           Load secrets for shell integration
+    Options:
+      --format <env|json>  Output format (default: env)
+
+  add <KEY="value">         Add or update a secret key-value pair
+    Example: env-sync add OPENAI_API_KEY="sk-..."
+
+  remove <KEY>              Remove a secret key from the file
+    Example: env-sync remove OPENAI_API_KEY
+
+  list                     List all secret keys (values hidden)
+
+  show <KEY>                Show value of a specific key
+
+  cron [options]           Setup cron job for periodic sync
+    Options:
+      --install            Install cron job (30min interval)
+      --remove             Remove cron job
+      --show               Show current cron job
+
+  help                     Show this help message
+
+Examples:
+  env-sync                           # Run sync via SCP (secure, default)
+  env-sync serve -d                  # Start HTTP server (for HTTP mode)
+  env-sync discover                  # Find peers on network
+  env-sync status                    # Show current status
+  env-sync init                      # Create new secrets file
+
+Setup Instructions:
+  1. Ensure SSH keys are set up between machines:
+     ssh-copy-id other-machine.local
+  
+  2. Initialize with encryption:
+     env-sync init --encrypted
+     env-sync                         # Uses SCP with encryption
+  
+  3. Adding a new machine to existing fleet:
+     # On new machine (D):
+     env-sync init --encrypted
+     env-sync key request-access --trigger beelink.local
+     env-sync                         # Now can decrypt and sync
+  
+  4. Shell integration (add to .bashrc):
+     eval "$(env-sync load 2>/dev/null)"
+  
+  5. To use insecure HTTP mode (not recommended):
+     env-sync serve -d                # Start HTTP server
+     env-sync --insecure-http         # Sync via HTTP
+
+Files:
+  ~/.secrets.env           # Main secrets file
+  ~/.config/env-sync/      # Configuration directory
+  ~/.config/env-sync/backups/  # Backup files
+
+Environment Variables:
+  ENV_SYNC_QUIET=true      # Suppress output
+  ENV_SYNC_PORT=5739       # Server port
+  ENV_SYNC_STRICT_SSH=true # Require known_hosts entries for SSH
+
+EOF
+}
+
+# Sync command
+cmd_sync() {
+    local all=false
+    local force=false
+    local quiet=false
+    local insecure_http=false
+    local args=()
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -a|--all) all=true; shift ;;
+            -f|--force) force=true; shift ;;
+            -q|--quiet) quiet=true; shift ;;
+            --insecure-http) insecure_http=true; shift ;;
+            -h|--help)
+                echo "Usage: env-sync sync [options]"
+                echo ""
+                echo "Syncs secrets from peers using SCP (SSH) by default."
+                echo ""
+                echo "Options:"
+                echo "  -a, --all              Sync from all discovered peers"
+                echo "  -f, --force            Force sync even if local is newer"
+                echo "  -q, --quiet            Quiet mode"
+                echo "  --insecure-http        Use insecure HTTP instead of SCP (not recommended)"
+                echo ""
+                echo "Examples:"
+                echo "  env-sync sync                           # Sync via SCP (secure)"
+                echo "  env-sync sync mbp16.local               # Sync from specific host"
+                echo "  env-sync sync --insecure-http           # Sync via HTTP (INSECURE)"
+                exit 0
+                ;;
+            *) args+=("$1"); shift ;;
+        esac
+    done
+    
+    if $quiet; then
+        export ENV_SYNC_QUIET=true
+    fi
+    
+    local client_args=()
+    $all && client_args+=("--all")
+    $force && client_args+=("--force")
+    $insecure_http && client_args+=("--insecure-http")
+    
+    if [[ ${#args[@]} -gt 0 ]]; then
+        client_args+=("${args[@]}")
+    fi
+    
+    "$SCRIPT_DIR/env-sync-client" "${client_args[@]}"
+}
+
+# Serve command
+cmd_serve() {
+    local port=""
+    local daemon=false
+    local quiet=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -p|--port) port="$2"; shift 2 ;;
+            -d|--daemon) daemon=true; shift ;;
+            -q|--quiet) quiet=true; shift ;;
+            -h|--help)
+                echo "Usage: env-sync serve [options]"
+                echo "Options:"
+                echo "  -p, --port PORT    Port to listen on"
+                echo "  -d, --daemon       Run as daemon"
+                echo "  -q, --quiet        Quiet mode"
+                exit 0
+                ;;
+            *) log "ERROR" "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+    
+    local serve_args=()
+    [[ -n "$port" ]] && serve_args+=("--port" "$port")
+    $daemon && serve_args+=("--daemon")
+    $quiet && serve_args+=("--quiet")
+    
+    "$SCRIPT_DIR/env-sync-serve" "${serve_args[@]}"
+}
+
+# Discover command
+cmd_discover() {
+    local timeout=""
+    local quiet=false
+    local verbose=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -t|--timeout) timeout="$2"; shift 2 ;;
+            -q|--quiet) quiet=true; shift ;;
+            -v|--verbose) verbose=true; shift ;;
+            -h|--help)
+                echo "Usage: env-sync discover [options]"
+                echo "Options:"
+                echo "  -t, --timeout SECS  Discovery timeout"
+                echo "  -q, --quiet         Only output hostnames"
+                echo "  -v, --verbose       Verbose output"
+                exit 0
+                ;;
+            *) log "ERROR" "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+    
+    local discover_args=()
+    [[ -n "$timeout" ]] && discover_args+=("--timeout" "$timeout")
+    $quiet && discover_args+=("--quiet")
+    $verbose && discover_args+=("--verbose")
+    
+    "$SCRIPT_DIR/env-sync-discover" "${discover_args[@]}"
+}
+
+# Status command
+cmd_status() {
+    echo "=== env-sync Status ==="
+    echo ""
+    
+    # Local file status
+    echo "Local Secrets File:"
+    if [[ -f "$SECRETS_FILE" ]]; then
+        local version=$(get_file_version "$SECRETS_FILE")
+        local timestamp=$(get_file_timestamp "$SECRETS_FILE")
+        local host=$(get_file_host "$SECRETS_FILE")
+        local checksum=$(get_file_checksum "$SECRETS_FILE")
+        
+        echo "  File: $SECRETS_FILE"
+        echo "  Version: $version"
+        echo "  Created: $timestamp"
+        echo "  Host: $host"
+        echo "  Checksum: ${checksum:0:16}..."
+        echo ""
+    else
+        echo "  File: $SECRETS_FILE (NOT FOUND)"
+        echo "  Run 'env-sync init' to create one"
+        echo ""
+    fi
+    
+    # Server status
+    echo "Local Server:"
+    if curl -fsSL "http://localhost:${ENV_SYNC_PORT}/health" >/dev/null 2>&1; then
+        local health=$(curl -fsSL "http://localhost:${ENV_SYNC_PORT}/health" 2>/dev/null)
+        local server_version=$(echo "$health" | grep -o '"version": "[^"]*"' | cut -d'"' -f4)
+        echo "  Status: Running"
+        echo "  Port: $ENV_SYNC_PORT"
+        echo "  Version: $server_version"
+    else
+        echo "  Status: Not running"
+        echo "  Run 'env-sync serve -d' to start"
+    fi
+    echo ""
+    
+    # Peer discovery
+    echo "Discovered Peers:"
+    local peers
+    if peers=$("$SCRIPT_DIR/env-sync-discover" --quiet 2>/dev/null) && [[ -n "$peers" ]]; then
+        local count=$(echo "$peers" | wc -l)
+        echo "  Found $count peer(s):"
+        echo "$peers" | while read -r peer; do
+            local peer_health
+            if peer_health=$(curl -fsSL --connect-timeout 2 "http://${peer}:${ENV_SYNC_PORT}/health" 2>/dev/null); then
+                local peer_version=$(echo "$peer_health" | grep -o '"version": "[^"]*"' | cut -d'"' -f4)
+                echo "    ✓ $peer (v$peer_version)"
+            else
+                echo "    ✗ $peer (unreachable)"
+            fi
+        done
+    else
+        echo "  No peers found on local network"
+    fi
+    echo ""
+    
+    # Backups
+    echo "Backups:"
+    if [[ -d "$BACKUP_DIR" ]]; then
+        local backup_count=$(find "$BACKUP_DIR" -name "secrets.backup.*" -type f 2>/dev/null | wc -l)
+        echo "  Available backups: $backup_count"
+        if [[ $backup_count -gt 0 ]]; then
+            ls -1t "$BACKUP_DIR"/secrets.backup.* 2>/dev/null | head -5 | while read -r backup; do
+                local backup_name=$(basename "$backup")
+                local backup_time=$(stat -c %y "$backup" 2>/dev/null | cut -d'.' -f1)
+                echo "    - $backup_name ($backup_time)"
+            done
+        fi
+    else
+        echo "  No backups yet"
+    fi
+}
+
+# Init command
+cmd_init() {
+    local encrypted=false
+    local encrypt_existing=false
+    
+    # Parse init-specific arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --encrypted)
+                encrypted=true
+                shift
+                ;;
+            --encrypt-existing)
+                encrypt_existing=true
+                shift
+                ;;
+            --help)
+                echo "Usage: env-sync init [options]"
+                echo "Options:"
+                echo "  --encrypted         Initialize with encryption enabled (generates AGE key)"
+                echo "  --encrypt-existing  Encrypt an existing plaintext secrets file"
+                echo "  --help              Show this help"
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Check if AGE is installed when encryption requested
+    if $encrypted || $encrypt_existing; then
+        if ! check_age_installed; then
+            log "ERROR" "AGE is required for encryption. Install it first."
+            exit 1
+        fi
+    fi
+    
+    # Handle encrypt-existing
+    if $encrypt_existing; then
+        if [[ ! -f "$SECRETS_FILE" ]]; then
+            log "ERROR" "No existing secrets file to encrypt: $SECRETS_FILE"
+            exit 1
+        fi
+        
+        if is_file_encrypted "$SECRETS_FILE"; then
+            log "INFO" "Secrets file is already encrypted"
+            exit 0
+        fi
+        
+        # Generate key if needed
+        if [[ ! -f "$AGE_KEY_FILE" ]]; then
+            generate_age_key
+        fi
+        
+        # Get existing content
+        local content=$(get_secrets_content "$SECRETS_FILE")
+        local local_pubkey=$(get_local_age_pubkey)
+        local timestamp=$(get_timestamp)
+        
+        # Encrypt line by line
+        local new_content=""
+        while IFS= read -r line || [[ -n "$line" ]]; do
+            # Skip empty lines and comments
+            if [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]]; then
+                new_content="${new_content}
+${line}"
+                continue
+            fi
+            
+            # Match KEY=VALUE or KEY="VALUE"
+            if [[ "$line" =~ ^([A-Za-z_][A-Za-z0-9_]*)=(.*) ]]; then
+                local key="${BASH_REMATCH[1]}"
+                local val="${BASH_REMATCH[2]}"
+                
+                # Strip quotes
+                if [[ "$val" =~ ^\".*\"$ ]]; then
+                    val="${val#\"}"; val="${val%\"}"
+                elif [[ "$val" =~ ^'.*'$ ]]; then
+                    val="${val#\'}"; val="${val%\'}"
+                fi
+                
+                # Encrypt
+                local enc_val=$(encrypt_value "$val" "$local_pubkey")
+                new_content="${new_content}
+$key=\"$enc_val\" # ENVSYNC_UPDATED_AT=$timestamp"
+            else
+                new_content="${new_content}
+${line}"
+            fi
+        done <<< "$content"
+        
+        # Clean up newlines
+        new_content=$(echo "$new_content" | sed '/^[[:space:]]*$/d')
+        
+        # Save encrypted file
+        create_backup "$SECRETS_FILE"
+        
+        # Update file with new content
+        set_secrets_content "$SECRETS_FILE" "$new_content"
+        
+        # Add ENCRYPTED metadata manually since set_secrets_content doesn't add it
+        # and update RECIPIENTS
+        sed -i.bak "s/^# HOST:.*/# HOST: $(get_hostname)\n# ENCRYPTED: true\n# RECIPIENTS: $local_pubkey/" "$SECRETS_FILE"
+        rm -f "$SECRETS_FILE.bak"
+        
+        # Update checksum/metadata
+        update_metadata "$SECRETS_FILE"
+        
+        log "SUCCESS" "Encrypted existing secrets file"
+        log "INFO" "Run 'env-sync' to sync with peers and add them as recipients"
+        return 0
+    fi
+    
+    # Handle regular init (with or without encryption)
+    if [[ -f "$SECRETS_FILE" ]]; then
+        log "WARN" "Secrets file already exists: $SECRETS_FILE"
+        read -p "Overwrite? [y/N] " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            log "INFO" "Cancelled"
+            exit 0
+        fi
+        create_backup "$SECRETS_FILE"
+    fi
+    
+    # Generate AGE key if encryption requested
+    if $encrypted; then
+        generate_age_key
+    fi
+    
+    # Create plaintext file first
+    init_secrets_file "$SECRETS_FILE"
+    
+    # If encrypted, enable encryption flag in metadata
+    if $encrypted; then
+        local local_pubkey=$(get_local_age_pubkey)
+        
+        # Add ENCRYPTED metadata
+        sed -i.bak "s/^# HOST:.*/# HOST: $(get_hostname)\n# ENCRYPTED: true\n# RECIPIENTS: $local_pubkey/" "$SECRETS_FILE"
+        rm -f "$SECRETS_FILE.bak"
+        
+        update_metadata "$SECRETS_FILE"
+        
+        log "SUCCESS" "Initialized encrypted secrets file at $SECRETS_FILE"
+        log "INFO" "Your AGE public key: $local_pubkey"
+        log "INFO" "Edit the file to add your secrets (use 'env-sync add'), then run 'env-sync'"
+    else
+        log "SUCCESS" "Initialized secrets file at $SECRETS_FILE"
+        log "INFO" "Edit the file to add your secrets, then run 'env-sync'"
+    fi
+}
+
+# Restore command
+cmd_restore() {
+    local backup_num="${1:-1}"
+    
+    if [[ ! "$backup_num" =~ ^[0-9]+$ ]] || [[ $backup_num -lt 1 ]] || [[ $backup_num -gt $MAX_BACKUPS ]]; then
+        log "ERROR" "Invalid backup number: $backup_num (must be 1-$MAX_BACKUPS)"
+        exit 1
+    fi
+    
+    restore_backup "$backup_num"
+}
+
+# Cron command
+cmd_cron() {
+    local action="show"
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --install) action="install"; shift ;;
+            --remove) action="remove"; shift ;;
+            --show) action="show"; shift ;;
+            *) log "ERROR" "Unknown option: $1"; exit 1 ;;
+        esac
+    done
+    
+    case "$action" in
+        install)
+            local cron_line="*/30 * * * * $SCRIPT_DIR/env-sync --quiet sync >/dev/null 2>&1"
+            
+            # Remove existing entry if present
+            (crontab -l 2>/dev/null | grep -v "env-sync" || true) | crontab -
+            
+            # Add new entry
+            (crontab -l 2>/dev/null || true; echo "$cron_line") | crontab -
+            
+            log "SUCCESS" "Installed cron job for 30-minute sync"
+            log "INFO" "Next sync will happen automatically"
+            ;;
+            
+        remove)
+            if crontab -l 2>/dev/null | grep -q "env-sync"; then
+                (crontab -l 2>/dev/null | grep -v "env-sync" || true) | crontab -
+                log "SUCCESS" "Removed cron job"
+            else
+                log "INFO" "No cron job found"
+            fi
+            ;;
+            
+        show)
+            if crontab -l 2>/dev/null | grep -q "env-sync"; then
+                echo "Current cron job:"
+                crontab -l 2>/dev/null | grep "env-sync"
+            else
+                log "INFO" "No cron job installed"
+                echo "Run 'env-sync cron --install' to set up periodic sync"
+            fi
+            ;;
+    esac
+}
+
+# Add command - Add or update a key-value pair
+cmd_add() {
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: env-sync add KEY=\"value\""
+        echo "Example: env-sync add OPENAI_API_KEY=\"sk-...\""
+        exit 1
+    fi
+    
+    local input="$1"
+    
+    # Parse KEY="value" or KEY=value format
+    if [[ ! "$input" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]]; then
+        log "ERROR" "Invalid format. Use: KEY=\"value\" or KEY=value"
+        exit 1
+    fi
+    
+    local key="${input%%=*}"
+    local value="${input#*=}"
+    
+    # Remove quotes if present
+    if [[ "$value" =~ ^\".*\"$ ]]; then
+        value="${value#\"}"
+        value="${value%\"}"
+    elif [[ "$value" =~ ^'.*'$ ]]; then
+        value="${value#\'}"
+        value="${value%\'}"
+    fi
+    
+    # Check if file exists
+    if [[ ! -f "$SECRETS_FILE" ]]; then
+        log "ERROR" "Secrets file not found. Run 'env-sync init' first."
+        exit 1
+    fi
+    
+    # Generate timestamp for this update
+    local timestamp=$(get_timestamp)
+    
+    # Handle encryption
+    local final_value="$value"
+    local is_encrypted=false
+    
+    if is_file_encrypted "$SECRETS_FILE"; then
+        is_encrypted=true
+        if ! can_decrypt_file "$SECRETS_FILE"; then
+            log "ERROR" "Cannot modify encrypted file - you don't have access"
+            exit 1
+        fi
+        
+        # Get recipients
+        local recipients_str=$(get_recipients_from_file "$SECRETS_FILE")
+        IFS=',' read -r -a recipients <<< "$recipients_str"
+        
+        # Encrypt value
+        final_value=$(encrypt_value "$value" "${recipients[@]}")
+        if [[ $? -ne 0 ]]; then
+            log "ERROR" "Failed to encrypt value"
+            exit 1
+        fi
+    fi
+    
+    # Create backup
+    create_backup "$SECRETS_FILE"
+    
+    # Get current content
+    local content=$(get_secrets_content "$SECRETS_FILE")
+    
+    # Remove existing key if present
+    # We use a more robust grep pattern to avoid matching partial keys
+    content=$(echo "$content" | grep -v "^$key=" | grep -v "^export $key=")
+    
+    # Add new key-value pair with timestamp
+    # Format: KEY="VALUE" # ENVSYNC_UPDATED_AT=TIMESTAMP
+    local new_line="$key=\"$final_value\" # ENVSYNC_UPDATED_AT=$timestamp"
+    
+    content="${content}
+$new_line"
+    
+    # Clean up empty lines
+    content=$(echo "$content" | sed '/^[[:space:]]*$/d')
+    
+    # Save updated content
+    set_secrets_content "$SECRETS_FILE" "$content"
+    
+    log "SUCCESS" "Added/updated key: $key"
+}
+
+# Remove command - Remove a key
+cmd_remove() {
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: env-sync remove KEY"
+        echo "Example: env-sync remove OPENAI_API_KEY"
+        exit 1
+    fi
+    
+    local key="$1"
+    
+    # Validate key format
+    if [[ ! "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        log "ERROR" "Invalid key name: $key"
+        exit 1
+    fi
+    
+    # Check if file exists
+    if [[ ! -f "$SECRETS_FILE" ]]; then
+        log "ERROR" "Secrets file not found. Run 'env-sync init' first."
+        exit 1
+    fi
+    
+    # Handle encrypted files - verify access
+    if is_file_encrypted "$SECRETS_FILE"; then
+        if ! can_decrypt_file "$SECRETS_FILE"; then
+            log "ERROR" "Cannot modify encrypted file - you don't have access"
+            exit 1
+        fi
+        
+        # Note: We don't need to decrypt the whole file to remove a key
+        # because the keys themselves are plaintext in the new format.
+        # We just remove the line matching the key.
+    fi
+    
+    # Check if key exists (in raw content)
+    local content=$(get_secrets_content "$SECRETS_FILE")
+    if ! echo "$content" | grep -q "^$key="; then
+        log "WARN" "Key not found: $key"
+        exit 0
+    fi
+    
+    # Create backup
+    create_backup "$SECRETS_FILE"
+    
+    # Remove the key (and any export prefix)
+    content=$(echo "$content" | grep -v "^$key=" | grep -v "^export $key=")
+    
+    # Remove empty lines
+    content=$(echo "$content" | sed '/^[[:space:]]*$/d')
+    
+    # Save updated content
+    set_secrets_content "$SECRETS_FILE" "$content"
+    
+    log "SUCCESS" "Removed key: $key"
+}
+
+# Show command - Show value of a specific key
+cmd_show() {
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: env-sync show KEY"
+        echo "Example: env-sync show OPENAI_API_KEY"
+        exit 1
+    fi
+    
+    local key="$1"
+    
+    # Check if file exists
+    if [[ ! -f "$SECRETS_FILE" ]]; then
+        log "ERROR" "Secrets file not found. Run 'env-sync init' first."
+        exit 1
+    fi
+    
+    # Get raw content (encrypted values)
+    local content=$(get_secrets_content "$SECRETS_FILE")
+    
+    # Find the line
+    local line=$(echo "$content" | grep "^$key=")
+    
+    if [[ -z "$line" ]]; then
+        log "ERROR" "Key not found: $key"
+        exit 1
+    fi
+    
+    # Extract value
+    if [[ "$line" =~ ^$key=\"(.*)\"[[:space:]]*# ]]; then
+        local val="${BASH_REMATCH[1]}"
+        
+        # Check if encrypted (heuristic: look for base64 chars and ENVSYNC_UPDATED_AT)
+        if is_file_encrypted "$SECRETS_FILE"; then
+            local decrypted=$(decrypt_value "$val")
+            if [[ $? -eq 0 ]]; then
+                echo "$decrypted"
+            else
+                log "ERROR" "Failed to decrypt value"
+                exit 1
+            fi
+        else
+            echo "$val"
+        fi
+    else
+        # Fallback for simple format KEY=VAL
+        echo "${line#*=}"
+    fi
+}
+
+# List command - List all keys
+cmd_list() {
+    # Check if file exists
+    if [[ ! -f "$SECRETS_FILE" ]]; then
+        log "ERROR" "Secrets file not found. Run 'env-sync init' first."
+        exit 1
+    fi
+    
+    # Get keys directly from file content
+    local keys=$(get_secrets_content "$SECRETS_FILE" | grep "^[A-Za-z_]" | cut -d'=' -f1 | sort -u)
+    
+    if [[ -z "$keys" ]]; then
+        echo "No secrets found in file."
+    else
+        echo "Secrets keys:"
+        local count=0
+        while read -r k; do
+            [[ -z "$k" ]] && continue
+            echo "  • $k"
+            ((count++))
+        done <<< "$keys"
+        echo ""
+        echo "Total: $count keys"
+    fi
+}
+
+# Route to appropriate command
+case "$COMMAND" in
+    sync|s)
+        cmd_sync "$@"
+        ;;
+    serve|server)
+        cmd_serve "$@"
+        ;;
+    discover|discover|d)
+        cmd_discover "$@"
+        ;;
+    status|st)
+        cmd_status
+        ;;
+    init|i)
+        cmd_init "$@"
+        ;;
+    restore|r)
+        cmd_restore "$@"
+        ;;
+    cron|c)
+        cmd_cron "$@"
+        ;;
+    key|k)
+        "$SCRIPT_DIR/env-sync-key" "$@"
+        ;;
+    load|l)
+        "$SCRIPT_DIR/env-sync-load" "$@"
+        ;;
+    add|a)
+        cmd_add "$@"
+        ;;
+    remove|rm|delete|del)
+        cmd_remove "$@"
+        ;;
+    list|ls)
+        cmd_list
+        ;;
+    show|get)
+        cmd_show "$@"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        log "ERROR" "Unknown command: $COMMAND"
+        show_help
+        exit 1
+        ;;
+esac

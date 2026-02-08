@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # Configuration
-ENV_SYNC_VERSION="1.0.0"
+ENV_SYNC_VERSION="2.0.0"
 ENV_SYNC_PORT="5739"
 ENV_SYNC_SERVICE="_envsync._tcp"
 ENV_SYNC_INIT_TIMESTAMP="${ENV_SYNC_INIT_TIMESTAMP:-1970-01-01T00:00:00Z}"
@@ -241,7 +241,7 @@ init_secrets_file() {
     local init_timestamp="${2:-$ENV_SYNC_INIT_TIMESTAMP}"
     local hostname=$(get_hostname)
     local timestamp="$init_timestamp"
-    local version="1.0.0"
+    local version="2.0.0"
     
     mkdir -p "$(dirname "$file")"
     

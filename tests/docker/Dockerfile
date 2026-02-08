@@ -38,13 +38,14 @@ RUN sed -i 's/#enable-dbus=yes/enable-dbus=yes/' /etc/avahi/avahi-daemon.conf
 RUN sed -i 's/hosts:.*files dns/hosts: files mdns_minimal [NOTFOUND=return] dns mdns/' /etc/nsswitch.conf
 
 # Copy env-sync binaries (built from source)
+RUN mkdir -p /usr/local/lib/env-sync/legacy
 COPY bin/ /usr/local/bin/
-COPY lib/ /usr/local/lib/
+COPY legacy/bin/ /usr/local/lib/env-sync/legacy/bin/
+COPY legacy/lib/ /usr/local/lib/env-sync/legacy/lib/
 ARG ENV_SYNC_GO_BIN=target/env-sync
-COPY ${ENV_SYNC_GO_BIN} /usr/local/bin/env-sync-go
-
-# Make scripts executable
-RUN chmod +x /usr/local/bin/env-sync*
+COPY ${ENV_SYNC_GO_BIN} /usr/local/lib/env-sync/env-sync-go
+RUN ln -sf ../lib/env-sync/env-sync-go /usr/local/bin/env-sync-go
+RUN chmod +x /usr/local/bin/env-sync
 
 # Create env-sync directories for envsync user
 RUN mkdir -p /home/envsync/.config/env-sync/keys/known_hosts && \

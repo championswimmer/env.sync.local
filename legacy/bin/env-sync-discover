@@ -1,0 +1,325 @@
+#!/bin/bash
+# env-sync-discover: Discover env-sync peers on local network
+# Usage: env-sync-discover [options]
+# Options:
+#   -t, --timeout SECONDS  Discovery timeout (default: 5)
+#   -q, --quiet            Only output hostnames
+#   -v, --verbose          Verbose output
+#   --ssh                  Filter for hosts with SSH access
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+GO_BIN="${ENV_SYNC_GO_BIN:-}"
+if [[ -z "$GO_BIN" ]]; then
+    if [[ -x "$SCRIPT_DIR/env-sync-go" ]]; then
+        GO_BIN="$SCRIPT_DIR/env-sync-go"
+    else
+        GO_BIN="$ROOT_DIR/target/env-sync"
+    fi
+fi
+
+if [[ "${ENV_SYNC_USE_BASH:-}" != "true" && -x "$GO_BIN" ]]; then
+    exec -a env-sync-discover "$GO_BIN" "$@"
+fi
+
+source "$SCRIPT_DIR/../lib/common.sh"
+
+TIMEOUT="${ENV_SYNC_DISCOVERY_TIMEOUT:-5}"
+VERBOSE=false
+FILTER_SSH=false
+COLLECT_KEYS=false
+SHOW_PUBKEYS=false
+ENV_SYNC_QUIET=false
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -t|--timeout)
+            TIMEOUT="$2"
+            shift 2
+            ;;
+        -q|--quiet)
+            ENV_SYNC_QUIET=true
+            shift
+            ;;
+        -v|--verbose)
+            VERBOSE=true
+            shift
+            ;;
+        --ssh)
+            FILTER_SSH=true
+            shift
+            ;;
+        --collect-keys)
+            COLLECT_KEYS=true
+            shift
+            ;;
+        --pubkeys)
+            SHOW_PUBKEYS=true
+            shift
+            ;;
+        -h|--help)
+            echo "Usage: env-sync-discover [options]"
+            echo "Options:"
+            echo "  -t, --timeout SECONDS  Discovery timeout (default: 5)"
+            echo "  -q, --quiet            Only output hostnames"
+            echo "  -v, --verbose          Verbose output"
+            echo "  --ssh                  Filter for hosts with SSH access"
+            echo "  --collect-keys         Collect and cache peer public keys"
+            echo "  --pubkeys              Show discovered public keys"
+            exit 0
+            ;;
+        *)
+            log "ERROR" "Unknown option: $1"
+            exit 1
+            ;;
+    esac
+done
+
+# Detect OS
+detect_os() {
+    case "$(uname -s)" in
+        Linux*)     echo "linux";;
+        Darwin*)    echo "macos";;
+        CYGWIN*|MINGW*|MSYS*) echo "windows";;
+        *)          echo "unknown";;
+    esac
+}
+
+OS=$(detect_os)
+
+# Test SSH connectivity
+test_ssh() {
+    local host="$1"
+    # Use SSH with batch mode to avoid password prompts
+    if ssh -n -o BatchMode=yes -o ConnectTimeout=3 -o StrictHostKeyChecking=accept-new "$host" "echo OK" >/dev/null 2>&1; then
+        return 0
+    else
+        return 1
+    fi
+}
+
+# Discover peers using avahi (Linux)
+discover_avahi() {
+    local timeout="$1"
+    
+    if ! command -v avahi-browse >/dev/null 2>&1; then
+        log "ERROR" "avahi-browse not found. Install with: sudo apt-get install avahi-utils"
+        return 1
+    fi
+    
+    # Browse for env-sync services
+    local results
+    results=$(timeout "$timeout" avahi-browse -t -r -p "$ENV_SYNC_SERVICE" 2>/dev/null || true)
+    
+    if [[ -z "$results" ]]; then
+        return 0
+    fi
+    
+    # Parse results to extract hostnames
+    echo "$results" | grep -E "^=" | while read -r line; do
+        local hostname=$(echo "$line" | awk -F';' '{print $7}')
+        if [[ -n "$hostname" ]]; then
+            # Remove trailing dot if present
+            hostname="${hostname%.}"
+            echo "$hostname"
+        fi
+    done
+}
+
+# Discover peers using dns-sd (macOS)
+discover_dnssd() {
+    local timeout="$1"
+    
+    if ! command -v dns-sd >/dev/null 2>&1; then
+        log "ERROR" "dns-sd not found. This should be built into macOS."
+        return 1
+    fi
+    
+    # Browse for env-sync services
+    local results
+    results=$(timeout "$timeout" dns-sd -B "$ENV_SYNC_SERVICE" local. 2>/dev/null || true)
+    
+    if [[ -z "$results" ]]; then
+        return 0
+    fi
+    
+    # Parse results
+    echo "$results" | grep -E "^\\+.*$ENV_SYNC_SERVICE" | while read -r line; do
+        local hostname=$(echo "$line" | awk '{print $NF}')
+        if [[ -n "$hostname" ]]; then
+            # Query for more info
+            local info
+            info=$(timeout 2 dns-sd -L "$hostname" "$ENV_SYNC_SERVICE" local. 2>/dev/null || true)
+            if [[ -n "$info" ]]; then
+                local target=$(echo "$info" | grep -E "^\\+" | awk '{print $7}')
+                if [[ -n "$target" ]]; then
+                    target="${target%.}"
+                    echo "$target"
+                fi
+            fi
+        fi
+    done
+}
+
+# Discover peers using fallback method (scan .local domain)
+discover_fallback() {
+    local timeout="$1"
+    
+    log "WARN" "Using fallback discovery method (limited functionality)"
+    
+    # Try to find common hostnames
+    local common_hosts=(
+        "beelink.local"
+        "mbp16.local"
+        "razer.local"
+        "macbook.local"
+        "macbook-pro.local"
+        "macbook-air.local"
+        "imac.local"
+        "mac-mini.local"
+        "ubuntu.local"
+        "debian.local"
+        "fedora.local"
+        "linux.local"
+        "raspberrypi.local"
+        "pi.local"
+    )
+    
+    local found_hosts=()
+    
+    for host in "${common_hosts[@]}"; do
+        # Skip self
+        local my_hostname=$(get_hostname)
+        if [[ "$host" == "$my_hostname" ]]; then
+            continue
+        fi
+        
+        # Try to ping and check if env-sync is running
+        if ping -c 1 -W 1 "$host" >/dev/null 2>&1; then
+            if curl -fsSL --connect-timeout 2 "http://${host}:${ENV_SYNC_PORT}/health" >/dev/null 2>&1; then
+                found_hosts+=("$host")
+            fi
+        fi
+    done
+    
+    if [[ ${#found_hosts[@]} -eq 0 ]]; then
+        return 0
+    fi
+    
+    printf '%s\n' "${found_hosts[@]}"
+}
+
+# Main discovery logic
+main() {
+    if ! $ENV_SYNC_QUIET; then
+        log "INFO" "Discovering env-sync peers (timeout: ${TIMEOUT}s)..."
+    fi
+    
+    local peers=""
+    
+    case "$OS" in
+        linux)
+            peers=$(discover_avahi "$TIMEOUT")
+            ;;
+        macos)
+            peers=$(discover_dnssd "$TIMEOUT")
+            ;;
+        *)
+            peers=$(discover_fallback "$TIMEOUT")
+            ;;
+    esac
+    
+    # Remove duplicates and sort
+    if [[ -n "$peers" ]]; then
+        peers=$(echo "$peers" | sort -u)
+    fi
+    
+    # Filter for SSH access if requested
+    if $FILTER_SSH; then
+        local ssh_peers=""
+        while IFS= read -r peer; do
+            [[ -z "$peer" ]] && continue
+            if test_ssh "$peer"; then
+                ssh_peers="${ssh_peers}${peer}\n"
+            fi
+        done <<< "$peers"
+        peers=$(echo -e "$ssh_peers" | grep -v '^$' || true)
+    fi
+    
+    # Count results
+    local count=0
+    if [[ -n "$peers" ]]; then
+        count=$(echo "$peers" | wc -l)
+    fi
+    
+    if $ENV_SYNC_QUIET; then
+        # Just output hostnames
+        if [[ -n "$peers" ]]; then
+            echo "$peers"
+        fi
+    else
+        if [[ $count -eq 0 ]]; then
+            log "WARN" "No env-sync peers found on local network"
+            echo ""
+        else
+            log "SUCCESS" "Found $count peer(s):"
+            echo "$peers" | while read -r peer; do
+                local peer_info=""
+                local peer_pubkey=""
+                
+                if $VERBOSE; then
+                    # Get more info about peer
+                    local health
+                    health=$(curl -fsSL --connect-timeout 3 "http://${peer}:${ENV_SYNC_PORT}/health" 2>/dev/null || echo "")
+                    if [[ -n "$health" ]]; then
+                        local version=$(echo "$health" | grep -o '"version": "[^"]*"' | cut -d'"' -f4)
+                        peer_info=" (version: $version)"
+                    fi
+                fi
+                
+                if $COLLECT_KEYS || $SHOW_PUBKEYS; then
+                    # Try to fetch pubkey via SSH
+                    peer_pubkey=$(ssh -n -o ConnectTimeout=3 -o StrictHostKeyChecking=accept-new "$peer" "cat ~/.config/env-sync/keys/age_key.pub" 2>/dev/null || echo "")
+                    if [[ -n "$peer_pubkey" ]]; then
+                        # Cache the pubkey
+                        cache_peer_pubkey "$peer" "$peer_pubkey"
+                        if $SHOW_PUBKEYS; then
+                            peer_info="$peer_info [pubkey: ${peer_pubkey:0:20}...]"
+                        fi
+                    fi
+                fi
+                
+                echo "  - $peer$peer_info"
+            done
+        fi
+    fi
+    
+    # Collect keys from all discovered peers if requested
+    if $COLLECT_KEYS; then
+        log "INFO" "Collecting public keys from peers..."
+        local collected=0
+        while IFS= read -r peer; do
+            [[ -z "$peer" ]] && continue
+            
+            # Try to fetch pubkey via SSH
+            local pubkey=$(ssh -n -o ConnectTimeout=3 -o StrictHostKeyChecking=accept-new "$peer" "cat ~/.config/env-sync/keys/age_key.pub" 2>/dev/null || echo "")
+            if [[ -n "$pubkey" ]]; then
+                cache_peer_pubkey "$peer" "$pubkey"
+                log "SUCCESS" "Cached public key from $peer"
+                ((collected++))
+            else
+                log "WARN" "Could not fetch public key from $peer"
+            fi
+        done <<< "$peers"
+        
+        if [[ $collected -gt 0 ]]; then
+            log "SUCCESS" "Collected $collected public key(s)"
+            log "INFO" "Run 'env-sync' to sync with new recipients"
+        fi
+    fi
+}
+
+main

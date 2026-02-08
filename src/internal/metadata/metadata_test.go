@@ -12,7 +12,7 @@ func TestUpdateChecksumMatchesGenerateChecksum(t *testing.T) {
 	file := filepath.Join(dir, "secrets.env")
 	content := strings.Join([]string{
 		"# === ENV_SYNC_METADATA ===",
-		"# VERSION: 1.0.0",
+		"# VERSION: 2.0.0",
 		"# TIMESTAMP: 2024-01-01T00:00:00Z",
 		"# HOST: example.local",
 		"# MODIFIED: 2024-01-01T00:00:00Z",
@@ -22,7 +22,7 @@ func TestUpdateChecksumMatchesGenerateChecksum(t *testing.T) {
 		"FOO=\"bar\"",
 		"",
 		"# === ENV_SYNC_FOOTER ===",
-		"# VERSION: 1.0.0",
+		"# VERSION: 2.0.0",
 		"# TIMESTAMP: 2024-01-01T00:00:00Z",
 		"# HOST: example.local",
 		"# === END_FOOTER ===",
@@ -59,7 +59,7 @@ func TestEnsureEncryptedMetadataAndClear(t *testing.T) {
 	file := filepath.Join(dir, "secrets.env")
 	content := strings.Join([]string{
 		"# === ENV_SYNC_METADATA ===",
-		"# VERSION: 1.0.0",
+		"# VERSION: 2.0.0",
 		"# TIMESTAMP: 2024-01-01T00:00:00Z",
 		"# HOST: oldhost.local",
 		"# MODIFIED: 2024-01-01T00:00:00Z",
@@ -69,7 +69,7 @@ func TestEnsureEncryptedMetadataAndClear(t *testing.T) {
 		"FOO=\"bar\"",
 		"",
 		"# === ENV_SYNC_FOOTER ===",
-		"# VERSION: 1.0.0",
+		"# VERSION: 2.0.0",
 		"# TIMESTAMP: 2024-01-01T00:00:00Z",
 		"# HOST: oldhost.local",
 		"# === END_FOOTER ===",

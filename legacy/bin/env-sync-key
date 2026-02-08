@@ -1,0 +1,604 @@
+#!/bin/bash
+# env-sync-key: Key management for AGE encryption
+# Usage: env-sync-key [subcommand] [options]
+
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+GO_BIN="${ENV_SYNC_GO_BIN:-}"
+if [[ -z "$GO_BIN" ]]; then
+    if [[ -x "$SCRIPT_DIR/env-sync-go" ]]; then
+        GO_BIN="$SCRIPT_DIR/env-sync-go"
+    else
+        GO_BIN="$ROOT_DIR/target/env-sync"
+    fi
+fi
+
+if [[ "${ENV_SYNC_USE_BASH:-}" != "true" && -x "$GO_BIN" ]]; then
+    exec -a env-sync-key "$GO_BIN" "$@"
+fi
+
+source "$SCRIPT_DIR/../lib/common.sh"
+
+# Show help
+show_help() {
+    cat << 'EOF'
+env-sync key - Manage AGE encryption keys
+
+Usage: env-sync key [subcommand] [options]
+
+Subcommands:
+  show [options]                 Show this machine's key
+    Options:
+      --private                  ⚠️ Show private key (be careful!)
+
+  export [options]               Export public key
+    Options:
+      --qr                       Export as QR code (if qrencode available)
+
+  import <pubkey>                Import a peer's public key
+  import --from <hostname>       Import from a peer via SSH
+
+  list                           List all cached public keys
+  list --local                   Show only this machine's key
+
+  request-access [options]       Request access for new machine
+    Options:
+      --trigger <hostname>       SSH into host and trigger sync (immediate)
+      --trigger-all              Trigger sync on all online hosts
+      --from <hostname>          Request from specific host (approval required)
+      --all                      Request from all discovered hosts
+
+  grant-access [options]         Grant access to a requesting machine
+    Options:
+      --to <hostname>            Hostname of machine to grant access
+      --pubkey <key>             Public key of machine to grant access
+
+  approve-requests               Interactively approve pending requests
+
+  remove <hostname>              Remove a peer's public key
+  revoke <hostname>              Remove key and re-encrypt without them
+
+Examples:
+  env-sync key show                        # Show your public key
+  env-sync key export                      # Export your pubkey
+  env-sync key import beelink age1xyz...   # Import beelink's pubkey
+  env-sync key request-access --trigger-all  # Request immediate access
+  env-sync key list                        # List known pubkeys
+
+EOF
+}
+
+# Show key
+cmd_show() {
+    local show_private=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --private)
+                show_private=true
+                shift
+                ;;
+            --help)
+                echo "Usage: env-sync key show [options]"
+                echo "Options:"
+                echo "  --private    Show private key (be careful!)"
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    if $show_private; then
+        if [[ ! -f "$AGE_KEY_FILE" ]]; then
+            log "ERROR" "No private key found at $AGE_KEY_FILE"
+            exit 1
+        fi
+        log "WARN" "⚠️  PRIVATE KEY - Keep this secret!"
+        cat "$AGE_KEY_FILE"
+    else
+        local pubkey=$(get_local_age_pubkey)
+        if [[ -z "$pubkey" ]]; then
+            log "INFO" "No public key found. Generate one with: env-sync init --encrypted"
+            exit 1
+        fi
+        echo "Public Key: $pubkey"
+        echo "Hostname: $(get_hostname)"
+        echo ""
+        echo "To share with peers:"
+        echo "  env-sync key import --pubkey \"$pubkey\" $(get_hostname)"
+    fi
+}
+
+# Export key
+cmd_export() {
+    local use_qr=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --qr)
+                use_qr=true
+                shift
+                ;;
+            --help)
+                echo "Usage: env-sync key export [options]"
+                echo "Options:"
+                echo "  --qr    Display as QR code"
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    local pubkey=$(get_local_age_pubkey)
+    if [[ -z "$pubkey" ]]; then
+        log "ERROR" "No public key found. Generate one with: env-sync init --encrypted"
+        exit 1
+    fi
+    
+    if $use_qr; then
+        if command -v qrencode >/dev/null 2>&1; then
+            echo "$pubkey" | qrencode -t ANSIUTF8
+        else
+            log "ERROR" "qrencode not installed. Install with: brew install qrencode"
+            exit 1
+        fi
+    else
+        echo "$pubkey"
+    fi
+}
+
+# Import key
+cmd_import() {
+    local from_host=""
+    local pubkey=""
+    local hostname=""
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --from)
+                from_host="$2"
+                shift 2
+                ;;
+            --help)
+                echo "Usage: env-sync key import [options] <pubkey> [hostname]"
+                echo "Options:"
+                echo "  --from <hostname>    Import from peer via SSH"
+                echo ""
+                echo "Examples:"
+                echo "  env-sync key import age1xyz... beelink.local"
+                echo "  env-sync key import --from beelink.local"
+                exit 0
+                ;;
+            -*)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+            *)
+                if [[ -z "$pubkey" ]]; then
+                    pubkey="$1"
+                elif [[ -z "$hostname" ]]; then
+                    hostname="$1"
+                fi
+                shift
+                ;;
+        esac
+    done
+    
+    # Import from remote host via SSH
+    if [[ -n "$from_host" ]]; then
+        log "INFO" "Fetching public key from $from_host..."
+        pubkey=$(ssh -o ConnectTimeout=5 "$from_host" "cat ~/.config/env-sync/keys/age_key.pub" 2>/dev/null) || {
+            log "ERROR" "Failed to fetch pubkey from $from_host"
+            exit 1
+        }
+        hostname="${from_host%.local}"
+    fi
+    
+    if [[ -z "$pubkey" ]]; then
+        log "ERROR" "No public key provided"
+        exit 1
+    fi
+    
+    if [[ -z "$hostname" ]]; then
+        log "ERROR" "Hostname required. Usage: env-sync key import <pubkey> <hostname>"
+        exit 1
+    fi
+    
+    # Validate pubkey format (basic check)
+    if [[ ! "$pubkey" =~ ^age1[0-9a-z]+$ ]]; then
+        log "ERROR" "Invalid AGE public key format"
+        exit 1
+    fi
+    
+    # Cache the pubkey
+    cache_peer_pubkey "$hostname" "$pubkey"
+    log "SUCCESS" "Imported public key for $hostname"
+    log "INFO" "Run 'env-sync' to re-encrypt secrets with new recipient"
+}
+
+# List keys
+cmd_list() {
+    local local_only=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --local)
+                local_only=true
+                shift
+                ;;
+            --help)
+                echo "Usage: env-sync key list [options]"
+                echo "Options:"
+                echo "  --local    Show only this machine's key"
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Show local key
+    local local_pubkey=$(get_local_age_pubkey)
+    if [[ -n "$local_pubkey" ]]; then
+        echo "Local Key ($(get_hostname)):"
+        echo "  $local_pubkey"
+        echo ""
+    fi
+    
+    if ! $local_only; then
+        # Show cached peers
+        echo "Known Peers:"
+        local found=false
+        while IFS= read -r line; do
+            if [[ -n "$line" ]]; then
+                echo "  $line"
+                found=true
+            fi
+        done < <(list_cached_peers)
+        
+        if ! $found; then
+            echo "  (none)"
+        fi
+    fi
+}
+
+# Request access
+cmd_request_access() {
+    local trigger_host=""
+    local trigger_all=false
+    local from_hosts=()
+    local request_all=false
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --trigger)
+                trigger_host="$2"
+                shift 2
+                ;;
+            --trigger-all)
+                trigger_all=true
+                shift
+                ;;
+            --from)
+                from_hosts+=("$2")
+                shift 2
+                ;;
+            --all)
+                request_all=true
+                shift
+                ;;
+            --help)
+                echo "Usage: env-sync key request-access [options]"
+                echo "Options:"
+                echo "  --trigger <hostname>    SSH into host and trigger re-encryption"
+                echo "  --trigger-all           Trigger on all online hosts"
+                echo "  --from <hostname>       Request from specific host (needs approval)"
+                echo "  --all                   Request from all discovered hosts"
+                echo ""
+                echo "Examples:"
+                echo "  env-sync key request-access --trigger beelink.local"
+                echo "  env-sync key request-access --trigger-all"
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    # Get local pubkey
+    local local_pubkey=$(get_local_age_pubkey)
+    if [[ -z "$local_pubkey" ]]; then
+        log "ERROR" "No local key found. Generate with: env-sync init --encrypted"
+        exit 1
+    fi
+    
+    # Remote trigger (preferred method)
+    if [[ -n "$trigger_host" ]] || $trigger_all; then
+        local hosts_to_trigger=()
+        
+        if $trigger_all; then
+            # Discover all peers
+            log "INFO" "Discovering peers to trigger..."
+            while IFS= read -r peer; do
+                [[ -z "$peer" ]] && continue
+                hosts_to_trigger+=("$peer")
+            done < <("$SCRIPT_DIR/env-sync-discover" --quiet)
+        else
+            hosts_to_trigger=("$trigger_host")
+        fi
+        
+        if [[ ${#hosts_to_trigger[@]} -eq 0 ]]; then
+            log "WARN" "No hosts found to trigger"
+            exit 1
+        fi
+        
+        local triggered=0
+        for host in "${hosts_to_trigger[@]}"; do
+            log "INFO" "Triggering re-encryption on $host..."
+            
+            # SSH into host and execute commands
+            if ssh -o ConnectTimeout=5 "$host" "
+                # Add this machine's pubkey
+                mkdir -p ~/.config/env-sync/keys/known_hosts
+                echo '$local_pubkey' > ~/.config/env-sync/keys/known_hosts/$(get_hostname).pub
+                
+                # Trigger sync (which will re-encrypt)
+                $SCRIPT_DIR/env-sync 2>/dev/null || true
+                echo 'SUCCESS'
+            " 2>/dev/null | grep -q "SUCCESS"; then
+                log "SUCCESS" "Triggered re-encryption on $host"
+                ((triggered++))
+            else
+                log "WARN" "Failed to trigger $host"
+            fi
+        done
+        
+        if [[ $triggered -gt 0 ]]; then
+            log "SUCCESS" "Successfully triggered $triggered host(s)"
+            log "INFO" "Run 'env-sync' to download encrypted secrets"
+        else
+            log "ERROR" "Failed to trigger any hosts"
+            exit 1
+        fi
+        
+        return 0
+    fi
+    
+    # Manual request (requires approval)
+    if [[ ${#from_hosts[@]} -gt 0 ]] || $request_all; then
+        if $request_all; then
+            # Discover all peers
+            while IFS= read -r peer; do
+                [[ -z "$peer" ]] && continue
+                from_hosts+=("$peer")
+            done < <("$SCRIPT_DIR/env-sync-discover" --quiet)
+        fi
+        
+        local requested=0
+        for host in "${from_hosts[@]}"; do
+            log "INFO" "Sending access request to $host..."
+            
+            # Create request file on remote host
+            if ssh -o ConnectTimeout=5 "$host" "
+                mkdir -p ~/.config/env-sync/requests
+                cat > ~/.config/env-sync/requests/$(get_hostname).request << 'EOF'
+{
+  \"hostname\": \"$(get_hostname)\",
+  \"pubkey\": \"$local_pubkey\",
+  \"timestamp\": \"$(date -u '+%Y-%m-%dT%H:%M:%SZ')\"
+}
+EOF
+                echo 'REQUEST_SENT'
+            " 2>/dev/null | grep -q "REQUEST_SENT"; then
+                log "SUCCESS" "Access request sent to $host"
+                log "INFO" "An admin must run 'env-sync key approve-requests' on $host"
+                ((requested++))
+            else
+                log "WARN" "Failed to send request to $host"
+            fi
+        done
+        
+        if [[ $requested -eq 0 ]]; then
+            log "ERROR" "Failed to send any access requests"
+            exit 1
+        fi
+    fi
+}
+
+# Grant access
+cmd_grant_access() {
+    local target_host=""
+    local pubkey=""
+    
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --to)
+                target_host="$2"
+                shift 2
+                ;;
+            --pubkey)
+                pubkey="$2"
+                shift 2
+                ;;
+            --help)
+                echo "Usage: env-sync key grant-access [options]"
+                echo "Options:"
+                echo "  --to <hostname>      Hostname of machine to grant access"
+                echo "  --pubkey <key>       Public key of machine"
+                exit 0
+                ;;
+            *)
+                log "ERROR" "Unknown option: $1"
+                exit 1
+                ;;
+        esac
+    done
+    
+    if [[ -z "$target_host" ]] || [[ -z "$pubkey" ]]; then
+        log "ERROR" "Both --to and --pubkey are required"
+        exit 1
+    fi
+    
+    # Import the key
+    cache_peer_pubkey "$target_host" "$pubkey"
+    
+    # Trigger sync to re-encrypt
+    log "INFO" "Granting access to $target_host..."
+    "$SCRIPT_DIR/env-sync" 2>/dev/null || true
+    
+    log "SUCCESS" "Access granted to $target_host"
+    log "INFO" "Secrets re-encrypted with new recipient"
+}
+
+# Approve requests
+cmd_approve_requests() {
+    local requests_dir="$CONFIG_DIR/requests"
+    
+    if [[ ! -d "$requests_dir" ]]; then
+        log "INFO" "No pending requests"
+        return 0
+    fi
+    
+    local requests=("$requests_dir"/*.request)
+    if [[ ! -f "${requests[0]}" ]]; then
+        log "INFO" "No pending requests"
+        return 0
+    fi
+    
+    log "INFO" "Pending access requests:"
+    echo ""
+    
+    for request_file in "$requests_dir"/*.request; do
+        [[ -f "$request_file" ]] || continue
+        
+        local hostname=$(basename "$request_file" .request)
+        local pubkey=""
+        local timestamp=""
+        
+        # Parse request
+        if command -v jq >/dev/null 2>&1; then
+            pubkey=$(jq -r '.pubkey' "$request_file" 2>/dev/null)
+            timestamp=$(jq -r '.timestamp' "$request_file" 2>/dev/null)
+        else
+            # Simple grep parsing
+            pubkey=$(grep -o '"pubkey": "[^"]*"' "$request_file" | cut -d'"' -f4)
+            timestamp=$(grep -o '"timestamp": "[^"]*"' "$request_file" | cut -d'"' -f4)
+        fi
+        
+        echo "  Hostname: $hostname"
+        echo "  Public Key: $pubkey"
+        echo "  Requested: $timestamp"
+        echo ""
+        
+        read -p "Grant access to $hostname? [Y/n] " -n 1 -r
+        echo
+        
+        if [[ $REPLY =~ ^[Yy]$ ]] || [[ -z $REPLY ]]; then
+            # Grant access
+            cache_peer_pubkey "$hostname" "$pubkey"
+            rm -f "$request_file"
+            log "SUCCESS" "Access granted to $hostname"
+        else
+            log "INFO" "Request denied for $hostname"
+            rm -f "$request_file"
+        fi
+        echo ""
+    done
+    
+    # Re-encrypt with new recipients
+    log "INFO" "Re-encrypting secrets with new recipients..."
+    "$SCRIPT_DIR/env-sync" 2>/dev/null || true
+}
+
+# Remove/revoke key
+cmd_remove() {
+    local hostname="$1"
+    local revoke=false
+    
+    if [[ "$hostname" == "--help" ]] || [[ -z "$hostname" ]]; then
+        echo "Usage: env-sync key remove <hostname>"
+        echo "       env-sync key revoke <hostname>  (also re-encrypts without them)"
+        exit 0
+    fi
+    
+    # Check if called as revoke
+    if [[ "${FUNCNAME[1]}" == "cmd_revoke" ]]; then
+        revoke=true
+    fi
+    
+    # Remove from cache
+    remove_peer_pubkey "$hostname"
+    
+    if $revoke; then
+        log "INFO" "Re-encrypting secrets without $hostname..."
+        "$SCRIPT_DIR/env-sync" 2>/dev/null || true
+        log "SUCCESS" "Revoked access for $hostname"
+    else
+        log "SUCCESS" "Removed public key for $hostname"
+    fi
+}
+
+# Alias for revoke
+cmd_revoke() {
+    cmd_remove "$@"
+}
+
+# Main command router
+case "${1:-help}" in
+    show|s)
+        shift
+        cmd_show "$@"
+        ;;
+    export|e)
+        shift
+        cmd_export "$@"
+        ;;
+    import|i)
+        shift
+        cmd_import "$@"
+        ;;
+    list|ls|l)
+        shift
+        cmd_list "$@"
+        ;;
+    request-access|request|req)
+        shift
+        cmd_request_access "$@"
+        ;;
+    grant-access|grant)
+        shift
+        cmd_grant_access "$@"
+        ;;
+    approve-requests|approve)
+        shift
+        cmd_approve_requests
+        ;;
+    remove|rm|r)
+        shift
+        cmd_remove "$@"
+        ;;
+    revoke)
+        shift
+        cmd_revoke "$@"
+        ;;
+    help|--help|-h)
+        show_help
+        ;;
+    *)
+        log "ERROR" "Unknown subcommand: $1"
+        show_help
+        exit 1
+        ;;
+esac

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installation script for env-sync
+# Installation script for env-sync (Go default, Bash legacy)
 
 set -euo pipefail
 
@@ -15,6 +15,7 @@ USER_INSTALL=false
 INSTALL_PREFIX="/usr/local"
 BIN_DIR="$INSTALL_PREFIX/bin"
 LIB_DIR="$INSTALL_PREFIX/lib/env-sync"
+LEGACY_DIR="$LIB_DIR/legacy"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -24,6 +25,7 @@ while [[ $# -gt 0 ]]; do
             INSTALL_PREFIX="$HOME/.local"
             BIN_DIR="$INSTALL_PREFIX/bin"
             LIB_DIR="$INSTALL_PREFIX/lib/env-sync"
+            LEGACY_DIR="$LIB_DIR/legacy"
             shift
             ;;
         --help)
@@ -42,15 +44,23 @@ done
 
 # Get script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TARGET_BIN="$SCRIPT_DIR/target/env-sync"
 
-echo -e "${BLUE}Installing env-sync...${NC}"
+echo -e "${BLUE}Installing env-sync (Go default)${NC}"
 
 # Detect OS
 OS=$(uname -s)
 
-# Check dependencies
-echo "Checking dependencies..."
+# Required dependency: Go
+if ! command -v go >/dev/null 2>&1; then
+    echo -e "${RED}Go is required to build env-sync. Please install Go 1.24 or newer.${NC}"
+    exit 1
+fi
 
+echo "Go detected: $(go version)"
+
+# Optional dependencies (legacy Bash support and troubleshooting)
+echo "Checking optional dependencies..."
 MISSING_DEPS=()
 
 if ! command -v curl >/dev/null 2>&1; then
@@ -61,15 +71,6 @@ if ! command -v nc >/dev/null 2>&1 && ! command -v netcat >/dev/null 2>&1; then
     MISSING_DEPS+=("netcat (nc)")
 fi
 
-# Check for age (required for encryption support)
-if ! command -v age >/dev/null 2>&1; then
-    MISSING_DEPS+=("age")
-fi
-
-if ! command -v age-keygen >/dev/null 2>&1; then
-    MISSING_DEPS+=("age-keygen")
-fi
-
 case "$OS" in
     Linux)
         if ! command -v avahi-browse >/dev/null 2>&1; then
@@ -77,30 +78,15 @@ case "$OS" in
         fi
         ;;
     Darwin)
-        # macOS has built-in dns-sd
+        if ! command -v dns-sd >/dev/null 2>&1; then
+            MISSING_DEPS+=("dns-sd (built into macOS, install via Xcode CLI tools)")
+        fi
         ;;
 esac
 
 if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
-    echo -e "${YELLOW}Warning: Missing dependencies:${NC}"
+    echo -e "${YELLOW}Warning: Missing optional dependencies (needed for legacy Bash or troubleshooting):${NC}"
     printf '  - %s\n' "${MISSING_DEPS[@]}"
-    echo ""
-    echo "Please install them:"
-    case "$OS" in
-        Linux)
-            echo "  Ubuntu/Debian: sudo apt-get install avahi-daemon avahi-utils curl netcat-openbsd age"
-            echo "  Fedora/RHEL:   sudo dnf install avahi avahi-tools curl nmap-ncat age"
-            echo ""
-            echo "  To install age manually:"
-            echo "    curl -fsSL https://github.com/FiloSottile/age/releases/latest/download/age-v1.2.0-linux-amd64.tar.gz | tar -xz -C /usr/local/bin --strip-components=1"
-            ;;
-        Darwin)
-            echo "  macOS: brew install age"
-            echo ""
-            echo "  To install age manually:"
-            echo "    curl -fsSL https://github.com/FiloSottile/age/releases/latest/download/age-v1.2.0-darwin-amd64.tar.gz | tar -xz -C /usr/local/bin --strip-components=1"
-            ;;
-    esac
     echo ""
     read -p "Continue anyway? [y/N] " -n 1 -r
     echo
@@ -109,38 +95,47 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
     fi
 fi
 
+# Build Go binary
+echo "Building Go binary..."
+mkdir -p "$SCRIPT_DIR/target"
+(
+    cd "$SCRIPT_DIR/src"
+    go build -o "$TARGET_BIN" ./cmd/env-sync
+)
+
 # Create directories
 echo "Creating directories..."
 mkdir -p "$BIN_DIR"
 mkdir -p "$LIB_DIR"
+mkdir -p "$LEGACY_DIR"
 
-# Install files
-echo "Installing files..."
+# Install Go binary
+echo "Installing Go binary..."
+cp "$TARGET_BIN" "$LIB_DIR/env-sync-go"
+chmod +x "$LIB_DIR/env-sync-go"
 
-# Install binaries
-cp "$SCRIPT_DIR/bin/env-sync" "$BIN_DIR/"
-cp "$SCRIPT_DIR/bin/env-sync-discover" "$BIN_DIR/"
-cp "$SCRIPT_DIR/bin/env-sync-client" "$BIN_DIR/"
-cp "$SCRIPT_DIR/bin/env-sync-serve" "$BIN_DIR/"
-if [[ -x "$SCRIPT_DIR/target/env-sync" ]]; then
-    cp "$SCRIPT_DIR/target/env-sync" "$BIN_DIR/env-sync-go"
-    chmod +x "$BIN_DIR/env-sync-go"
-fi
+# Install wrapper and shims
+echo "Installing CLI wrappers..."
+cp "$SCRIPT_DIR/bin/env-sync" "$BIN_DIR/env-sync"
+chmod +x "$BIN_DIR/env-sync"
+for cmd in env-sync-client env-sync-discover env-sync-serve env-sync-key env-sync-load; do
+    ln -sf env-sync "$BIN_DIR/$cmd"
+done
+ln -sf ../lib/env-sync/env-sync-go "$BIN_DIR/env-sync-go"
 
-# Install library
-cp "$SCRIPT_DIR/lib/common.sh" "$LIB_DIR/"
+# Install legacy Bash implementation (kept for compatibility/tests)
+echo "Installing legacy Bash implementation to $LEGACY_DIR..."
+rm -rf "$LEGACY_DIR/bin" "$LEGACY_DIR/lib"
+cp -r "$SCRIPT_DIR/legacy/bin" "$LEGACY_DIR/bin"
+cp -r "$SCRIPT_DIR/legacy/lib" "$LEGACY_DIR/lib"
+chmod +x "$LEGACY_DIR/bin/"*
 
-# Make executable
-chmod +x "$BIN_DIR"/env-sync*
-
-# Create symlinks for older macOS compatibility
+# macOS: adjust legacy scripts if GNU sed is available
 if [[ "$OS" == "Darwin" ]]; then
-    # macOS uses BSD sed which has different syntax
-    # Update scripts to use gsed if available
     if command -v gsed >/dev/null 2>&1; then
-        for script in "$BIN_DIR"/env-sync*; do
-            sed -i.bak 's/sed -i /gsed -i /g' "$script" 2>/dev/null || true
-            rm -f "$script.bak"
+        for script in "$LEGACY_DIR"/bin/env-sync*; do
+            [ -f "$script" ] || continue
+            gsed -i 's/sed -i /gsed -i /g' "$script" 2>/dev/null || true
         done
     fi
 fi
@@ -160,8 +155,8 @@ fi
 # Post-install instructions
 echo "Next steps:"
 echo ""
-echo "1. Initialize your secrets file:"
-echo "   env-sync init"
+echo "1. Initialize your secrets file (Go binary by default):"
+echo "   env-sync init --encrypted"
 echo ""
 echo "2. Edit ~/.secrets.env to add your secrets"
 echo ""
@@ -171,9 +166,8 @@ echo ""
 echo "4. Set up periodic sync (optional):"
 echo "   env-sync cron --install"
 echo ""
-echo "5. On other machines, repeat steps 1-4"
-echo ""
-echo "The machines will automatically discover each other!"
+echo "5. Need the legacy Bash version? Run with ENV_SYNC_USE_BASH=true:"
+echo "   ENV_SYNC_USE_BASH=true env-sync status"
 echo ""
 
 # Verify installation
