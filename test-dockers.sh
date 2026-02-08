@@ -206,11 +206,11 @@ ensure_go_stub() {
         return
     fi
 
-    print_warning "Go binary missing; creating placeholder for legacy-only tests."
+    print_warning "Go binary missing; creating placeholder stub since build was skipped."
     mkdir -p "$SCRIPT_DIR/target"
     cat > "$stub_path" << 'EOF'
 #!/bin/sh
-echo "env-sync Go binary not built for legacy-only tests." >&2
+echo "env-sync binary not built; rerun without --skip-go-build to build the Go binary." >&2
 exit 1
 EOF
     chmod +x "$stub_path"
