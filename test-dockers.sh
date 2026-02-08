@@ -108,11 +108,7 @@ if [ $SHOW_HELP -eq 1 ]; then
 fi
 
 if [ -z "${ENV_SYNC_GO_BIN:-}" ]; then
-    if [ $SKIP_GO_BUILD -eq 1 ]; then
-        ENV_SYNC_GO_BIN="target/env-sync"
-    else
-        ENV_SYNC_GO_BIN="target/env-sync"
-    fi
+    ENV_SYNC_GO_BIN="target/env-sync"
 fi
 export ENV_SYNC_GO_BIN
 
