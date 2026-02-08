@@ -15,6 +15,9 @@ USER_INSTALL=false
 INSTALL_PREFIX="/usr/local"
 BIN_DIR="$INSTALL_PREFIX/bin"
 LIB_DIR="$INSTALL_PREFIX/lib/env-sync"
+LEGACY_DIR="$LIB_DIR/legacy"
+LEGACY_BIN_DIR="$LEGACY_DIR/bin"
+LEGACY_LIB_DIR="$LEGACY_DIR/lib"
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -24,6 +27,9 @@ while [[ $# -gt 0 ]]; do
             INSTALL_PREFIX="$HOME/.local"
             BIN_DIR="$INSTALL_PREFIX/bin"
             LIB_DIR="$INSTALL_PREFIX/lib/env-sync"
+            LEGACY_DIR="$LIB_DIR/legacy"
+            LEGACY_BIN_DIR="$LEGACY_DIR/bin"
+            LEGACY_LIB_DIR="$LEGACY_DIR/lib"
             shift
             ;;
         --help)
@@ -52,6 +58,7 @@ OS=$(uname -s)
 echo "Checking dependencies..."
 
 MISSING_DEPS=()
+GO_AVAILABLE=false
 
 if ! command -v curl >/dev/null 2>&1; then
     MISSING_DEPS+=("curl")
@@ -68,6 +75,12 @@ fi
 
 if ! command -v age-keygen >/dev/null 2>&1; then
     MISSING_DEPS+=("age-keygen")
+fi
+
+if command -v go >/dev/null 2>&1; then
+    GO_AVAILABLE=true
+else
+    MISSING_DEPS+=("go (1.24+)")
 fi
 
 case "$OS" in
@@ -109,36 +122,44 @@ if [[ ${#MISSING_DEPS[@]} -gt 0 ]]; then
     fi
 fi
 
+# Build Go binary unless it already exists and Go is unavailable
+if $GO_AVAILABLE; then
+    echo "Building Go binary..."
+    mkdir -p "$SCRIPT_DIR/target"
+    (cd "$SCRIPT_DIR/src" && go build -o "$SCRIPT_DIR/target/env-sync" ./cmd/env-sync)
+elif [[ ! -x "$SCRIPT_DIR/target/env-sync" ]]; then
+    echo -e "${RED}Go is required to build env-sync v2.0.${NC}"
+    echo "Install Go 1.24+ or run 'make build' before installing."
+    exit 1
+fi
+
 # Create directories
 echo "Creating directories..."
 mkdir -p "$BIN_DIR"
 mkdir -p "$LIB_DIR"
+mkdir -p "$LEGACY_BIN_DIR"
+mkdir -p "$LEGACY_LIB_DIR"
 
 # Install files
 echo "Installing files..."
 
-# Install binaries
-cp "$SCRIPT_DIR/bin/env-sync" "$BIN_DIR/"
-cp "$SCRIPT_DIR/bin/env-sync-discover" "$BIN_DIR/"
-cp "$SCRIPT_DIR/bin/env-sync-client" "$BIN_DIR/"
-cp "$SCRIPT_DIR/bin/env-sync-serve" "$BIN_DIR/"
-if [[ -x "$SCRIPT_DIR/target/env-sync" ]]; then
-    cp "$SCRIPT_DIR/target/env-sync" "$BIN_DIR/env-sync-go"
-    chmod +x "$BIN_DIR/env-sync-go"
-fi
+# Install Go binary (default)
+install -m 755 "$SCRIPT_DIR/target/env-sync" "$BIN_DIR/env-sync"
+for cmd in env-sync-discover env-sync-client env-sync-serve env-sync-key env-sync-load; do
+    ln -sf env-sync "$BIN_DIR/$cmd"
+done
 
-# Install library
-cp "$SCRIPT_DIR/lib/common.sh" "$LIB_DIR/"
-
-# Make executable
-chmod +x "$BIN_DIR"/env-sync*
+# Install legacy Bash scripts (optional)
+cp "$SCRIPT_DIR/legacy/bin/"* "$LEGACY_BIN_DIR/"
+cp "$SCRIPT_DIR/legacy/lib/common.sh" "$LEGACY_LIB_DIR/"
+chmod +x "$LEGACY_BIN_DIR"/env-sync*
 
 # Create symlinks for older macOS compatibility
 if [[ "$OS" == "Darwin" ]]; then
     # macOS uses BSD sed which has different syntax
     # Update scripts to use gsed if available
     if command -v gsed >/dev/null 2>&1; then
-        for script in "$BIN_DIR"/env-sync*; do
+        for script in "$LEGACY_BIN_DIR"/env-sync*; do
             sed -i.bak 's/sed -i /gsed -i /g' "$script" 2>/dev/null || true
             rm -f "$script.bak"
         done

@@ -1,6 +1,6 @@
 # env-sync
 
-[![Bash](https://img.shields.io/badge/Bash-4.0%2B-4EAA25?logo=gnu-bash&logoColor=white)](https://www.gnu.org/software/bash/)
+[![Go](https://img.shields.io/badge/Go-1.24%2B-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![SSH](https://img.shields.io/badge/SSH-Secure%20Transfer-green?logo=openssh&logoColor=white)](https://www.openssh.com/)
 [![AGE](https://img.shields.io/badge/AGE-Encryption-orange?logo=age&logoColor=white)](https://age-encryption.org/)
 
@@ -12,6 +12,12 @@
 Distributed secrets synchronization tool for local networks with **AGE encryption**. Sync your `.env` style secrets securely across multiple machines using SCP/SSH with at-rest encryption.
 
 ![](./docs/cover.png)
+
+## 🆕 What's New in v2.0 - Go-First Release
+
+- **Go binary by default**: `install.sh` builds and installs the Go CLI (`env-sync`)
+- **Legacy Bash scripts moved**: Shell implementation lives under `legacy/` for compatibility
+- **Same encryption features**: All v1.x encryption and sync capabilities remain
 
 ## 🆕 What's New in v1.0 - Encryption Support
 
@@ -61,6 +67,8 @@ ssh-copy-id mbp16.local
 ssh-copy-id razer.local
 ```
 
+Go 1.24+ is required to build the v2.0 binary during installation.
+
 AGE encryption is built into the Go binary, so no additional package install is required.
 If you want to troubleshoot encryption manually, you can optionally install the `age` CLI.
 
@@ -77,6 +85,8 @@ sudo ./install.sh
 # Or install to ~/.local/bin (user-only)
 ./install.sh --user
 ```
+
+`install.sh` builds the Go binary and installs it as `env-sync`, with legacy Bash scripts placed under `/usr/local/lib/env-sync/legacy` (or `~/.local/lib/env-sync/legacy` for user installs).
 
 ### Initial Setup
 
@@ -439,22 +449,17 @@ echo "test" | age -r $(env-sync key show) | age -d -i ~/.config/env-sync/keys/ag
 ### Project Structure
 ```
 env-sync/
-├── bin/
-│   ├── env-sync              # Main CLI
-│   ├── env-sync-discover     # Peer discovery with key collection
-│   ├── env-sync-client       # Sync client with encryption
-│   ├── env-sync-serve        # HTTP server
-│   ├── env-sync-key          # Key management CLI
-│   └── env-sync-load         # Shell integration
 ├── src/
 │   └── cmd/env-sync           # Go implementation entrypoint
 ├── target/
 │   └── env-sync               # Go build output
-├── lib/
-│   └── common.sh             # Shared functions + AGE encryption
-├── install.sh                # Installation script
-├── README.md                 # This file
-└── AGENTS.md                 # Developer documentation
+├── legacy/
+│   ├── bin/                   # Legacy Bash CLI scripts
+│   └── lib/
+│       └── common.sh          # Shared Bash utilities
+├── install.sh                 # Installation script
+├── README.md                  # This file
+└── AGENTS.md                  # Developer documentation
 ```
 
 ### Go Build
@@ -463,9 +468,10 @@ make build    # Build ./target/env-sync
 make test     # Run Go tests
 ```
 
-To force the legacy Bash implementation when the Go binary is present:
+To run the legacy Bash implementation (kept for compatibility):
 ```bash
-ENV_SYNC_USE_BASH=true env-sync status
+./legacy/bin/env-sync status
+# After install: /usr/local/lib/env-sync/legacy/bin/env-sync status
 ```
 
 ## License

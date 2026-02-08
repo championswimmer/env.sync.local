@@ -39,7 +39,7 @@ jobs:
         env:
           ENV_SYNC_SKIP_GO_BUILD: "true"
           ENV_SYNC_USE_BASH: "true"
-          ENV_SYNC_GO_BIN: bin/env-sync
+          ENV_SYNC_GO_BIN: legacy/bin/env-sync
         run: ./test-dockers.sh --skip-go-build --debug
   go-tests:
     runs-on: ubuntu-latest

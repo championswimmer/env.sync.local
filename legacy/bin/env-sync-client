@@ -11,7 +11,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 GO_BIN="${ENV_SYNC_GO_BIN:-}"
 if [[ -z "$GO_BIN" ]]; then
     if [[ -x "$SCRIPT_DIR/env-sync-go" ]]; then

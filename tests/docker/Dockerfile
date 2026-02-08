@@ -38,8 +38,8 @@ RUN sed -i 's/#enable-dbus=yes/enable-dbus=yes/' /etc/avahi/avahi-daemon.conf
 RUN sed -i 's/hosts:.*files dns/hosts: files mdns_minimal [NOTFOUND=return] dns mdns/' /etc/nsswitch.conf
 
 # Copy env-sync binaries (built from source)
-COPY bin/ /usr/local/bin/
-COPY lib/ /usr/local/lib/
+COPY legacy/bin/ /usr/local/bin/
+COPY legacy/lib/ /usr/local/lib/
 ARG ENV_SYNC_GO_BIN=target/env-sync
 COPY ${ENV_SYNC_GO_BIN} /usr/local/bin/env-sync-go
 

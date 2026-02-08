@@ -4,6 +4,8 @@
 
 **env-sync** is a distributed secrets synchronization tool for local networks. It allows multiple machines to sync `.env` style secrets without a central server, using peer-to-peer architecture with mDNS discovery.
 
+As of v2.0, the Go CLI (`src/cmd/env-sync`) is the primary implementation. The legacy Bash scripts remain under `legacy/` for compatibility and regression testing.
+
 ## Architecture
 
 ### Core Philosophy
@@ -27,19 +29,33 @@ env.sync.local/
 ├── README.md                  # User documentation & installation guide
 ├── AGENTS.md                  # This file - internal dev documentation
 ├── install.sh                 # Installation script (system or user)
-├── bin/                       # Executable scripts
-│   ├── env-sync              # Main CLI entry point
-│   ├── env-sync-discover     # mDNS peer discovery tool
-│   ├── env-sync-client       # HTTP client for fetching secrets
-│   └── env-sync-serve        # HTTP server for serving secrets
-└── lib/                       # Shared libraries
-    └── common.sh             # Common functions & utilities
+├── src/                       # Go implementation
+│   └── cmd/env-sync           # Go CLI entry point
+├── target/                    # Go build output
+│   └── env-sync
+└── legacy/                    # Legacy Bash implementation
+    ├── bin/                   # Executable scripts
+    │   ├── env-sync           # Main CLI entry point
+    │   ├── env-sync-discover  # mDNS peer discovery tool
+    │   ├── env-sync-client    # HTTP client for fetching secrets
+    │   └── env-sync-serve     # HTTP server for serving secrets
+    └── lib/                   # Shared libraries
+        └── common.sh          # Common functions & utilities
 ```
 
 ## File Descriptions
 
-### bin/env-sync (Main CLI)
-**Purpose**: Main entry point and command router
+### src/cmd/env-sync (Go CLI)
+**Purpose**: Primary Go-based CLI implementation
+**Usage**: `env-sync [command] [options]`
+
+**Key Implementation Details**:
+- Handles all core commands (sync, discover, serve, status, key management, secrets ops)
+- Uses argv[0] to support symlinked commands (env-sync-discover, env-sync-serve, etc.)
+- Builds to `target/env-sync`
+
+### legacy/bin/env-sync (Legacy Bash CLI)
+**Purpose**: Legacy entry point and command router
 **Usage**: `env-sync [command] [options]`
 
 **Commands**:
@@ -52,12 +68,12 @@ env.sync.local/
 - `cron`: Manage cron job
 
 **Key Implementation Details**:
-- Sources `../lib/common.sh` for shared functions
+- Sources `legacy/lib/common.sh` for shared functions
 - Routes to appropriate sub-command functions
 - Handles argument parsing for each command
 - Exit codes: 0=success, 1=error
 
-### bin/env-sync-discover
+### legacy/bin/env-sync-discover
 **Purpose**: Discover env-sync peers on local network
 **Usage**: `env-sync-discover [options]`
 
@@ -76,7 +92,7 @@ env.sync.local/
 - Timeout configurable (default: 5 seconds)
 - Removes self from results
 
-### bin/env-sync-client
+### legacy/bin/env-sync-client
 **Purpose**: Fetch and sync secrets from peers using SCP (SSH) by default
 **Usage**: `env-sync-client [options] [hostname]`
 
@@ -103,7 +119,7 @@ env.sync.local/
 - Validates fetched files before applying
 - Validates checksums
 
-### bin/env-sync-serve
+### legacy/bin/env-sync-serve
 **Purpose**: HTTP server for serving secrets file
 **Usage**: `env-sync-serve [options]`
 
@@ -123,7 +139,7 @@ env.sync.local/
 - Runs in foreground or daemon mode
 - Creates PID file at `~/.config/env-sync/server.pid`
 
-### lib/common.sh
+### legacy/lib/common.sh
 **Purpose**: Shared functions and utilities
 **Sourced by**: All other scripts
 
@@ -155,7 +171,7 @@ env.sync.local/
 
 **Configuration Variables**:
 ```bash
-ENV_SYNC_VERSION="1.0.0"    # Tool version
+ENV_SYNC_VERSION="2.0.0"    # Tool version
 ENV_SYNC_PORT="5739"         # Server port
 ENV_SYNC_SERVICE="_envsync._tcp"
 SECRETS_FILE="$HOME/.secrets.env"
@@ -174,10 +190,10 @@ MAX_BACKUPS=5
 - User: `~/.local/bin/`, `~/.local/lib/env-sync/`
 
 **Actions**:
-1. Check dependencies (curl, nc, avahi-utils/dns-sd)
-2. Create directories
-3. Copy binaries and libraries
-4. Make scripts executable
+1. Check dependencies (curl, nc, avahi-utils/dns-sd, go)
+2. Build the Go binary
+3. Install Go binary + symlinked subcommands into `/usr/local/bin`
+4. Copy legacy Bash scripts to `/usr/local/lib/env-sync/legacy`
 5. Verify installation
 
 ## Secrets File Format
@@ -215,7 +231,8 @@ AWS_ACCESS_KEY_ID="AKIA..."
 ## Dependencies
 
 ### Required
-- `bash` (v4.0+)
+- `go` (1.24+, for building the v2.0 binary)
+- `bash` (v4.0+, required for legacy scripts)
 - `curl` (for HTTP requests)
 - `nc` or `netcat` (for HTTP server)
 - `sha256sum` (for checksums)
@@ -320,19 +337,19 @@ env-sync --quiet          # Silent mode
 ### Manual Testing Commands
 ```bash
 # Test discovery
-./bin/env-sync-discover --verbose
+./target/env-sync discover --verbose
 
 # Test server (foreground)
-./bin/env-sync-serve --port 9999
+./target/env-sync serve --port 9999
 
 # Test client (dry run)
-./bin/env-sync-client hostname.local
+./target/env-sync sync hostname.local
 
 # Test full sync
-./bin/env-sync sync -f
+./target/env-sync sync -f
 
 # Check status
-./bin/env-sync status
+./target/env-sync status
 
 # View logs
 tail -f ~/.config/env-sync/logs/env-sync.log
@@ -385,7 +402,7 @@ export ENV_SYNC_PORT=5740
 
 ## Version History & Roadmap
 
-### Current (v1.0.0)
+### Current (v2.0.0)
 - ✅ Core sync functionality
 - ✅ SCP/SSH sync (secure by default)
 - ✅ mDNS discovery (Linux/macOS)
