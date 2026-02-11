@@ -292,9 +292,44 @@ func findNewestPeer(useHTTP bool) (string, error) {
 			continue
 		}
 		if keys.IsFileEncrypted(remoteFile) && !keys.CanDecryptFile(remoteFile) {
-			logging.Log("DEBUG", "Cannot decrypt file from "+peer+" (skipping)")
-			_ = os.Remove(remoteFile)
-			continue
+			if !useHTTP {
+				// Auto-register with peer so they re-encrypt with our public key. HTTP mode cannot auto-register because it cannot push our public key to the peer for re-encryption.
+				logging.Log("INFO", "Cannot decrypt secrets from "+peer+", registering and requesting re-encryption...")
+				// Keep reference to the originally fetched file so we can clean it up even if remoteFile is reassigned
+				originalEncryptedFile := remoteFile
+				// Local cleanup helper keeps temp-file handling scoped to this registration path
+				cleanupTempFile := func(path string) {
+					if err := os.Remove(path); err != nil && !errors.Is(err, os.ErrNotExist) {
+						logging.Log("DEBUG", "Failed to remove temp file from "+peer+" ("+path+"): "+err.Error())
+					}
+				}
+				if err := ensureRegisteredWithPeer(peer); err != nil {
+					logging.Log("WARN", "Failed to register with "+peer+": "+err.Error())
+					cleanupTempFile(originalEncryptedFile)
+					continue
+				}
+				refetchedFile, err := fetchFromHost(peer, useHTTP)
+				if err != nil {
+					logging.Log("WARN", "Failed to re-fetch secrets from "+peer+" after registration: "+err.Error())
+					cleanupTempFile(originalEncryptedFile)
+					continue
+				}
+				if keys.IsFileEncrypted(refetchedFile) && !keys.CanDecryptFile(refetchedFile) {
+					logging.Log("WARN", "Still cannot decrypt secrets from "+peer+" after registration. Waiting for peer to sync and finish re-encrypting with our key.")
+					// Clean up both fetched copies before skipping this peer
+					cleanupTempFile(refetchedFile)
+					cleanupTempFile(originalEncryptedFile)
+					continue
+				}
+				// Drop the original encrypted copy now that we have a decryptable replacement
+				cleanupTempFile(originalEncryptedFile)
+				remoteFile = refetchedFile
+				logging.Log("SUCCESS", "Registered with "+peer+" and can decrypt re-encrypted secrets")
+			} else {
+				logging.Log("DEBUG", "Cannot decrypt file from "+peer+" (skipping)")
+				_ = os.Remove(remoteFile)
+				continue
+			}
 		}
 		if newestFile == "" || secrets.IsNewer(remoteFile, newestFile) {
 			newestHost = peer

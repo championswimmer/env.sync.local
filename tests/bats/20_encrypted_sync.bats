@@ -31,6 +31,31 @@ load 'test_helper'
     [ "$status" -eq 0 ]
 }
 
+@test "Add beta-only encrypted secret before any key exchange" {
+    run add_secret "$CONTAINER_BETA" "BETA_AUTO" "beta-auto-value"
+    [ "$status" -eq 0 ]
+}
+
+@test "Beta syncs without manual key exchange (auto registration with alpha)" {
+    run trigger_sync "$CONTAINER_BETA"
+    [ "$status" -eq 0 ]
+}
+
+@test "Beta can decrypt alpha's encrypted secret after auto registration" {
+    run get_secret "$CONTAINER_BETA" "ENCRYPTED_SECRET"
+    [ "$status" -eq 0 ]
+    [ "$output" = "secret-value-789" ]
+}
+
+@test "Alpha can decrypt beta's secret after alpha sync post auto-registration" {
+    run trigger_sync "$CONTAINER_ALPHA"
+    [ "$status" -eq 0 ]
+
+    run get_secret "$CONTAINER_ALPHA" "BETA_AUTO"
+    [ "$status" -eq 0 ]
+    [ "$output" = "beta-auto-value" ]
+}
+
 @test "Initialize gamma with encryption" {
     run init_container "$CONTAINER_GAMMA" true
     [ "$status" -eq 0 ]
