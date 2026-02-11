@@ -191,6 +191,13 @@ func syncFromHost(host string, useHTTP bool, forcePull bool) error {
 	// If the remote file is encrypted and we can't decrypt it, auto-register
 	// with the peer so it re-encrypts secrets with our key, then re-fetch
 	if !useHTTP && keys.IsFileEncrypted(remoteFile) && !keys.CanDecryptFile(remoteFile) {
+		if config.IsVerbose() {
+			logging.Log("DEBUG", fmt.Sprintf("Remote file from %s is encrypted but cannot be decrypted", host))
+			remoteRecipients := keys.GetRecipientsFromFile(remoteFile)
+			localPubkey := keys.GetLocalPubkey()
+			logging.Log("DEBUG", fmt.Sprintf("Local pubkey: %s", localPubkey[:12]+"..."))
+			logging.Log("DEBUG", fmt.Sprintf("Remote recipients: %d keys", len(remoteRecipients)))
+		}
 		os.Remove(remoteFile)
 		logging.Log("INFO", "Local key not in recipients list on "+host+", registering and triggering re-encryption...")
 		if err := ensureRegisteredWithPeer(host); err != nil {
@@ -211,10 +218,16 @@ func syncFromHost(host string, useHTTP bool, forcePull bool) error {
 	// Extract and cache public keys from remote file
 	if err := keys.CachePublicKeysFromFile(remoteFile); err != nil {
 		logging.Log("WARN", "Failed to cache public keys from remote file")
+	} else if config.IsVerbose() {
+		publicKeys := keys.ExtractPublicKeysFromFile(remoteFile)
+		logging.Log("DEBUG", fmt.Sprintf("Cached %d public key(s) from %s", len(publicKeys), host))
 	}
 
 	// After caching new public keys, re-encrypt local file if needed
 	// to add the new recipients to our file's PUBLIC_KEYS metadata
+	if config.IsVerbose() {
+		logging.Log("DEBUG", "Checking if local file needs re-encryption with newly discovered keys...")
+	}
 	maybeReencryptLocal()
 
 	if _, err := os.Stat(config.SecretsFile()); err != nil {
@@ -328,30 +341,50 @@ func findNewestPeer(useHTTP bool) (string, error) {
 
 func maybeReencryptLocal() {
 	if _, err := os.Stat(config.SecretsFile()); err != nil {
+		if config.IsVerbose() {
+			logging.Log("DEBUG", "maybeReencryptLocal: secrets file does not exist, skipping")
+		}
 		return
 	}
 	if !keys.IsFileEncrypted(config.SecretsFile()) {
+		if config.IsVerbose() {
+			logging.Log("DEBUG", "maybeReencryptLocal: file not encrypted, skipping")
+		}
 		return
 	}
 	if !keys.CanDecryptFile(config.SecretsFile()) {
+		if config.IsVerbose() {
+			logging.Log("DEBUG", "maybeReencryptLocal: cannot decrypt local file, skipping re-encryption")
+		}
 		return
 	}
 
 	recipientsInFile := keys.GetRecipientsFromFile(config.SecretsFile())
 	allRecipients := keys.GetAllKnownRecipients()
 	if len(allRecipients) == 0 {
+		if config.IsVerbose() {
+			logging.Log("DEBUG", "maybeReencryptLocal: no known recipients, skipping")
+		}
 		return
 	}
 
 	missing := false
+	var missingRecipients []string
 	for _, recipient := range allRecipients {
 		if !keys.RecipientsContain(recipientsInFile, recipient) {
 			missing = true
-			break
+			missingRecipients = append(missingRecipients, recipient[:12]+"...")
 		}
 	}
 	if !missing {
+		if config.IsVerbose() {
+			logging.Log("DEBUG", "maybeReencryptLocal: all recipients already in file, skipping")
+		}
 		return
+	}
+
+	if config.IsVerbose() {
+		logging.Log("INFO", fmt.Sprintf("Re-encrypting local secrets to add %d new recipient(s): %s", len(missingRecipients), strings.Join(missingRecipients, ", ")))
 	}
 
 	tempFile, err := os.CreateTemp("", "env-sync-reencrypt")
@@ -410,12 +443,25 @@ func reencryptSecrets(inputFile, outputFile string) error {
 		return copyFile(inputFile, outputFile)
 	}
 
+	if config.IsVerbose() {
+		recipientPreviews := make([]string, 0, len(recipients))
+		for _, r := range recipients {
+			if len(r) > 12 {
+				recipientPreviews = append(recipientPreviews, r[:12]+"...")
+			} else {
+				recipientPreviews = append(recipientPreviews, r)
+			}
+		}
+		logging.Log("DEBUG", fmt.Sprintf("Re-encrypting to %d recipient(s): %s", len(recipients), strings.Join(recipientPreviews, ", ")))
+	}
+
 	content, err := secrets.GetSecretsContent(inputFile)
 	if err != nil {
 		return err
 	}
 
 	var newLines []string
+	var failedKeys []string
 	linePattern := regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_]*)="(.*)"\s*#.*ENVSYNC_UPDATED_AT=(.*)`)
 	for _, line := range strings.Split(content, "\n") {
 		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
@@ -429,8 +475,10 @@ func reencryptSecrets(inputFile, outputFile string) error {
 		}
 		decrypted, err := keys.DecryptValue(matches[2])
 		if err != nil {
-			logging.Log("WARN", "Failed to decrypt "+matches[1]+" during re-encryption (skipping re-encryption for this key)")
+			logging.Log("ERROR", fmt.Sprintf("Failed to decrypt %s during re-encryption: %v", matches[1], err))
+			logging.Log("WARN", fmt.Sprintf("Keeping %s in original encrypted form (may not be decryptable by new recipients)", matches[1]))
 			newLines = append(newLines, line)
+			failedKeys = append(failedKeys, matches[1])
 			continue
 		}
 		encrypted, err := keys.EncryptValue(decrypted, recipients)
@@ -439,6 +487,11 @@ func reencryptSecrets(inputFile, outputFile string) error {
 			return err
 		}
 		newLines = append(newLines, fmt.Sprintf("%s=\"%s\" # ENVSYNC_UPDATED_AT=%s", matches[1], encrypted, matches[3]))
+	}
+
+	if len(failedKeys) > 0 {
+		logging.Log("WARN", fmt.Sprintf("%d secret(s) could not be re-encrypted: %s", len(failedKeys), strings.Join(failedKeys, ", ")))
+		logging.Log("WARN", "These secrets may not be accessible to all peers. Consider manually re-adding them.")
 	}
 
 	if err := secrets.SetSecretsContent(outputFile, strings.TrimSpace(strings.Join(newLines, "\n"))); err != nil {
