@@ -1,6 +1,7 @@
 package syncer
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -161,4 +162,101 @@ func TestEnsureRegisteredWithPeerSSHFailure(t *testing.T) {
 	if err == nil {
 		t.Fatal("Expected error when SSH fails")
 	}
+}
+
+func TestFindNewestPeerRegistersAndRefetchesWhenUndecryptable(t *testing.T) {
+	tempDir := t.TempDir()
+	t.Setenv("HOME", tempDir)
+
+	binDir := filepath.Join(tempDir, "bin")
+	if err := os.MkdirAll(binDir, 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	hostnameScript := filepath.Join(binDir, "hostname")
+	if err := os.WriteFile(hostnameScript, []byte("#!/bin/sh\necho hostb.local\n"), 0o700); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
+
+	// Local dummy key files so GetLocalPubkey works and CanDecryptFile checks pass
+	if err := os.MkdirAll(config.AgeKeyDir(), 0o700); err != nil {
+		t.Fatalf("MkdirAll() error = %v", err)
+	}
+	if err := os.WriteFile(config.AgeKeyFile(), []byte("dummy-private"), 0o600); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+	if err := os.WriteFile(config.AgePubKeyFile(), []byte("age1hostb"), 0o644); err != nil {
+		t.Fatalf("WriteFile() error = %v", err)
+	}
+
+	originalFetch := fetchFromHostFunc
+	originalEnsure := ensureRegisteredWithPeerFunc
+	originalDiscover := discoverPeersFunc
+	originalTestSSH := testSSHFunc
+	defer func() {
+		fetchFromHostFunc = originalFetch
+		ensureRegisteredWithPeerFunc = originalEnsure
+		discoverPeersFunc = originalDiscover
+		testSSHFunc = originalTestSSH
+	}()
+
+	discoverPeersFunc = func(useHTTP bool) ([]string, error) {
+		return []string{"hosta.local"}, nil
+	}
+	testSSHFunc = func(host string) error { return nil }
+
+	registerCalled := false
+	ensureRegisteredWithPeerFunc = func(host string) error {
+		registerCalled = true
+		return nil
+	}
+
+	fetchCount := 0
+	fetchFromHostFunc = func(host string, useHTTP bool) (string, error) {
+		fetchCount++
+		tmp := filepath.Join(tempDir, "remote-fetch.env")
+		recipients := "hosta:age1hosta"
+		if fetchCount > 1 {
+			recipients = recipients + ",hostb:age1hostb"
+		}
+		content := mockEncryptedContent(host, recipients)
+		if err := os.WriteFile(tmp, []byte(content), 0o600); err != nil {
+			return "", err
+		}
+		return tmp, nil
+	}
+
+	newestHost, err := findNewestPeer(false)
+	if err != nil {
+		t.Fatalf("findNewestPeer() error = %v", err)
+	}
+	if newestHost != "hosta.local" {
+		t.Fatalf("newestHost = %q, want %q", newestHost, "hosta.local")
+	}
+	if !registerCalled {
+		t.Fatalf("expected ensureRegisteredWithPeer to be called")
+	}
+	if fetchCount < 2 {
+		t.Fatalf("expected refetch after registration, got %d fetch(es)", fetchCount)
+	}
+}
+
+func mockEncryptedContent(host, publicKeys string) string {
+	return fmt.Sprintf(`# === ENV_SYNC_METADATA ===
+# VERSION: %s
+# TIMESTAMP: 2025-01-01T00:00:00Z
+# HOST: %s
+# ENCRYPTED: true
+# PUBLIC_KEYS: %s
+# CHECKSUM: 
+# === END_METADATA ===
+
+KEY="cipher" # ENVSYNC_UPDATED_AT=2025-01-01T00:00:00Z
+
+# === ENV_SYNC_FOOTER ===
+# VERSION: %s
+# TIMESTAMP: 2025-01-01T00:00:00Z
+# HOST: %s
+# === END_FOOTER ===
+`, config.Version, host, publicKeys, config.Version, host)
 }

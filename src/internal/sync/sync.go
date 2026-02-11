@@ -29,6 +29,13 @@ type Options struct {
 	TargetHost   string
 }
 
+var (
+	fetchFromHostFunc            = fetchFromHost
+	ensureRegisteredWithPeerFunc = ensureRegisteredWithPeer
+	discoverPeersFunc            = discoverPeers
+	testSSHFunc                  = sshtransport.TestSSH
+)
+
 func Run(opts Options) error {
 	if opts.Quiet {
 		_ = os.Setenv("ENV_SYNC_QUIET", "true")
@@ -42,7 +49,7 @@ func Run(opts Options) error {
 
 	if opts.TargetHost != "" {
 		if !opts.InsecureHTTP {
-			if err := sshtransport.TestSSH(opts.TargetHost); err != nil {
+			if err := testSSHFunc(opts.TargetHost); err != nil {
 				logging.Log("ERROR", "Cannot SSH to "+opts.TargetHost)
 				logging.Log("INFO", "Ensure SSH keys are set up, or use --insecure-http flag")
 				return err
@@ -65,7 +72,7 @@ func Run(opts Options) error {
 				continue
 			}
 			if !opts.InsecureHTTP {
-				if err := sshtransport.TestSSH(peer); err != nil {
+				if err := testSSHFunc(peer); err != nil {
 					continue
 				}
 			}
@@ -183,29 +190,11 @@ func fetchFromHost(host string, useHTTP bool) (string, error) {
 }
 
 func syncFromHost(host string, useHTTP bool, forcePull bool) error {
-	remoteFile, err := fetchFromHost(host, useHTTP)
+	remoteFile, err := fetchRemoteWithRegistration(host, useHTTP)
 	if err != nil {
 		return err
 	}
 
-	// If the remote file is encrypted and we can't decrypt it, auto-register
-	// with the peer so it re-encrypts secrets with our key, then re-fetch
-	if !useHTTP && keys.IsFileEncrypted(remoteFile) && !keys.CanDecryptFile(remoteFile) {
-		os.Remove(remoteFile)
-		logging.Log("INFO", "Local key not in recipients list on "+host+", registering and triggering re-encryption...")
-		if err := ensureRegisteredWithPeer(host); err != nil {
-			return fmt.Errorf("cannot decrypt secrets from %s and failed to register: %w", host, err)
-		}
-		remoteFile, err = fetchFromHost(host, useHTTP)
-		if err != nil {
-			return fmt.Errorf("failed to re-fetch secrets from %s after registration: %w", host, err)
-		}
-		if keys.IsFileEncrypted(remoteFile) && !keys.CanDecryptFile(remoteFile) {
-			os.Remove(remoteFile)
-			return errors.New("still cannot decrypt secrets from " + host + " after registration")
-		}
-		logging.Log("SUCCESS", "Registered with "+host+" and re-fetched secrets")
-	}
 	defer os.Remove(remoteFile)
 
 	// Extract and cache public keys from remote file
@@ -271,7 +260,7 @@ func findNewestPeer(useHTTP bool) (string, error) {
 		newestIsLocal = true
 	}
 
-	peers, err := discoverPeers(useHTTP)
+	peers, err := discoverPeersFunc(useHTTP)
 	if err != nil {
 		logging.Log("WARN", "No peers discovered")
 		return "", err
@@ -282,12 +271,12 @@ func findNewestPeer(useHTTP bool) (string, error) {
 			continue
 		}
 		if !useHTTP {
-			if err := sshtransport.TestSSH(peer); err != nil {
+			if err := testSSHFunc(peer); err != nil {
 				logging.Log("DEBUG", "Cannot SSH to "+peer+" (skipping)")
 				continue
 			}
 		}
-		remoteFile, err := fetchFromHost(peer, useHTTP)
+		remoteFile, err := fetchRemoteWithRegistration(peer, useHTTP)
 		if err != nil {
 			continue
 		}
@@ -515,4 +504,32 @@ func refreshPublicKeysMetadata(file string) error {
 	}
 	publicKeys := keys.GetAllKnownPublicKeys()
 	return metadata.EnsurePublicKeysMetadata(file, publicKeys)
+}
+
+func fetchRemoteWithRegistration(host string, useHTTP bool) (string, error) {
+	remoteFile, err := fetchFromHostFunc(host, useHTTP)
+	if err != nil {
+		return "", err
+	}
+
+	// If the remote file is encrypted and we can't decrypt it, auto-register
+	// with the peer so it re-encrypts secrets with our key, then re-fetch
+	if !useHTTP && keys.IsFileEncrypted(remoteFile) && !keys.CanDecryptFile(remoteFile) {
+		_ = os.Remove(remoteFile)
+		logging.Log("INFO", "Local key not in recipients list on "+host+", registering and triggering re-encryption...")
+		if err := ensureRegisteredWithPeerFunc(host); err != nil {
+			return "", fmt.Errorf("cannot decrypt secrets from %s and failed to register: %w", host, err)
+		}
+		remoteFile, err = fetchFromHostFunc(host, useHTTP)
+		if err != nil {
+			return "", fmt.Errorf("failed to re-fetch secrets from %s after registration: %w", host, err)
+		}
+		if keys.IsFileEncrypted(remoteFile) && !keys.CanDecryptFile(remoteFile) {
+			_ = os.Remove(remoteFile)
+			return "", errors.New("still cannot decrypt secrets from " + host + " after registration")
+		}
+		logging.Log("SUCCESS", "Registered with "+host+" and re-fetched secrets")
+	}
+
+	return remoteFile, nil
 }
