@@ -192,7 +192,6 @@ build_go_binary() {
     mkdir -p "$SCRIPT_DIR/target"
 
     docker run --rm \
-        -u "$(id -u):$(id -g)" \
         -e CGO_ENABLED=0 \
         -e HOME=/tmp \
         -e GOPATH=/tmp/go \
@@ -201,7 +200,7 @@ build_go_binary() {
         -v "$SCRIPT_DIR":/workspace \
         -w /workspace/src \
         "$go_image" \
-        bash -c 'mkdir -p /workspace/target && /usr/local/go/bin/go build -o /workspace/target/env-sync ./cmd/env-sync'
+        bash -c 'mkdir -p /workspace/target && /usr/local/go/bin/go build -buildvcs=false -o /workspace/target/env-sync ./cmd/env-sync'
 }
 
 # Function to setup test environment
