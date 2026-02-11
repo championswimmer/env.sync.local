@@ -331,6 +331,11 @@ func findNewestPeer(useHTTP bool) (string, error) {
 				continue
 			}
 		}
+		// Cache any new public keys discovered and re-encrypt local file if needed
+		if err := keys.CachePublicKeysFromFile(remoteFile); err != nil && config.IsVerbose() {
+			logging.Log("DEBUG", "Failed to cache public keys from "+peer+": "+err.Error())
+		}
+		maybeReencryptLocal()
 		if newestFile == "" || secrets.IsNewer(remoteFile, newestFile) {
 			newestHost = peer
 			if newestFile != "" && !newestIsLocal {
