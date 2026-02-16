@@ -606,17 +606,17 @@ Phase 1: Create Invitation
 │     │    A     │────────►│    B     │────────►│    C     │         │
 │     │  (Alice) │         │  (Bob)   │         │(Charlie) │         │
 │     └──────────┘         └──────────┘         └──────────┘         │
-│         │                                              ▲           │
-│         │         B and C auto-accept Dave           │           │
-│         │         (trust Alice's signature)          │           │
-│         └──────────────────────────────────────────────┘           │
+│         │                                              ▲            │
+│         │         B and C auto-accept Dave            │            │
+│         │         (trust Alice's signature)           │            │
+│         └──────────────────────────────────────────────┘            │
 │                              │                                      │
 │                              │ Dave can now sync with any of them   │
 │                              ▼                                      │
-│                         ┌──────────┐                               │
-│                         │    D     │                               │
-│                         │  (Dave)  │                               │
-│                         └──────────┘                               │
+│                         ┌──────────┐                                │
+│                         │    D     │                                │
+│                         │  (Dave)  │                                │
+│                         └──────────┘                                │
 └─────────────────────────────────────────────────────────────────────┘
 
 Result: Dave is now part of the mesh, approved by all 3 existing peers
@@ -641,23 +641,23 @@ Catching Up:
 ┌─────────────────────────────────────────────────────────────────────┐
 │ When C comes online:                                                │
 │                                                                     │
-│ ┌──────────┐                                    ┌──────────┐       │
-│ │    C     │  "What did I miss?"              │    A     │       │
-│ │(Charlie) │ ────────────────────────────────►│  (Alice) │       │
-│ │  ONLINE  │                                  │          │       │
-│ └──────────┘                                  └──────────┘       │
-│      ▲                                               │             │
-│      │  Events since last cursor:                   │             │
-│      │    - peer_joined (D, approved by Alice)    │             │
-│      │    - secrets_reencrypted (added D)         │             │
-│      └───────────────────────────────────────────────┘             │
+│ ┌──────────┐                                    ┌──────────┐        │
+│ │    C     │  "What did I miss?"                │    A     │        │
+│ │(Charlie) │ ────────────────────────────────►  │  (Alice) │        │
+│ │  ONLINE  │                                    │          │        │
+│ └──────────┘                                    └──────────┘        │
+│      ▲                                                 │            │
+│      │  Events since last cursor:                     │            │
+│      │    - peer_joined (D, approved by Alice)        │            │
+│      │    - secrets_reencrypted (added D)             │            │
+│      └─────────────────────────────────────────────────┘            │
 │                                                                     │
 │ C verifies:                                                         │
 │ ✓ Event signature (Alice signed)                                   │
 │ ✓ Event ID > last applied                                          │
 │ ✓ Timestamp not expired                                            │
 │                                                                     │
-│ Result: C auto-approves D, re-encrypts secrets to include D       │
+│ Result: C auto-approves D, re-encrypts secrets to include D        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -690,16 +690,16 @@ Step 1: Revoke C
 │                                                                     │
 │ ┌──────────┐     ┌──────────┐     ┌──────────┐                     │
 │ │    A     │────►│    B     │     │    C     │                     │
-│ │  (Alice) │     │  (Bob)   │     │(Charlie)│                     │
+│ │  (Alice) │     │  (Bob)   │     │(Charlie) │                     │
 │ └──────────┘     └──────────┘     └────┬─────┘                     │
-│      │              │                  │                            │
-│      └──────────────┴──────────────────┘                            │
+│      │              │                   │                           │
+│      └──────────────┴───────────────────┘                           │
 │                     │                                               │
 │                     ▼                                               │
-│              ┌──────────┐                                          │
-│              │    D     │                                          │
-│              │  (Dave)  │                                          │
-│              └──────────┘                                          │
+│              ┌──────────┐                                           │
+│              │    D     │                                           │
+│              │  (Dave)  │                                           │
+│              └──────────┘                                           │
 │                                                                     │
 │ All peers:                                                          │
 │ ✓ Remove Charlie from approved list                                │
@@ -1033,20 +1033,20 @@ MODE A: Plaintext                       MODE B: SSH + Optional AGE          MODE
 MODE A: No Trust                        MODE B: Implicit Trust              MODE C: Explicit Trust
 
 Everyone trusts                         SSH key = trust                     Certificate + approval = trust
-everyone                              ┌──────────────────┐                ┌──────────────────┐
-┌──────────────────┐                  │                  │                │                  │
-│  ┌───┐ ┌───┐    │                  │  ┌───┐    ┌───┐  │                │  ┌───┐    ┌───┐  │
-│  │ A │◄┼►│ B │    │                  │  │ A │◄──►│ B │  │                │  │ A │◄──►│ B │  │
-│  └───┘ │ └───┘    │                  │  └───┘╲  ╱└───┘  │                │  └───┘╲✓╱└───┘  │
-│     ▲  │          │                  │       ╲╱         │                │       ╲╱         │
-│     └──┼───┐      │                  │        │         │                │    ✓ approved    │
-│      ┌─┴─┐ │      │                  │      ┌─┴─┐       │                │      ┌─┴─┐       │
-│      │ C │─┘      │                  │      │ C │       │                │      │ C │       │
-│      └───┘        │                  │      └───┘       │                │      └───┘       │
-│                   │                  │       ▲          │                │       ▲          │
-│  No checks!       │                  │       │ SSH      │                │       │ approved │
-│  ⚠️  Dangerous     │                  │       │ keys     │                │       │ by A or B│
-└──────────────────┘                  └──────────────────┘                └──────────────────┘
+everyone                                ┌──────────────────┐                ┌──────────────────┐
+┌──────────────────┐                    │                  │                │                  │
+│  ┌───┐ ┌───┐    │                    │  ┌───┐    ┌───┐  │                │  ┌───┐    ┌───┐  │
+│  │ A │◄┼►│ B │  │                    │  │ A │◄──►│ B │  │                │  │ A │◄──►│ B │  │
+│  └───┘ │ └───┘  │                    │  └───┘╲  ╱└───┘  │                │  └───┘╲✓╱└───┘  │
+│     ▲  │        │                    │       ╲╱         │                │       ╲╱         │
+│     └──┼───┐    │                    │        │         │                │    ✓ approved    │
+│      ┌─┴─┐ │    │                    │      ┌─┴─┐       │                │      ┌─┴─┐       │
+│      │ C │─┘    │                    │      │ C │       │                │      │ C │       │
+│      └───┘      │                    │      └───┘       │                │      └───┘       │
+│                 │                    │       ▲          │                │       ▲          │
+│  No checks!     │                    │       │ SSH      │                │       │ approved │
+│  ⚠️  Dangerous   │                    │       │ keys     │                │       │ by A or B│
+└──────────────────┘                    └──────────────────┘                └──────────────────┘
 
   ┌───┐                                    ┌───┐                                  ┌───┐
   │ D │ tries to join:                     │ D │ tries to join:                   │ D │ tries to join:
