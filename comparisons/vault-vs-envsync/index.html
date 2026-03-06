@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HashiCorp Vault vs env-sync | 2026 comparison</title>
+  <meta name="description" content="Detailed comparison of HashiCorp Vault and env-sync: centralized enterprise secrets platform vs lightweight peer-to-peer LAN sync." />
+  <link rel="canonical" href="https://envsync.arnav.tech/comparisons/vault-vs-envsync" />
+  <link rel="stylesheet" href="../../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../../">env-sync</a></div></header>
+<main>
+  <h1>HashiCorp Vault vs env-sync</h1>
+  <section class="hero-media">
+    <div class="panel">
+      <p><strong>Quick take:</strong> Vault is an enterprise-grade centralized secrets platform with dynamic credentials and policy/audit controls; env-sync is a distributed LAN-first sync tool that avoids central control planes.</p>
+      <img src="../../assets/cover.png" alt="HashiCorp Vault vs env-sync comparison preview" />
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>What each product optimizes for</h2>
+    <p><strong>Vault</strong> optimizes for organizational security governance: centralized APIs, dynamic secrets, authentication methods, policy enforcement, and audit workflows across teams and environments.</p>
+    <p><strong>env-sync</strong> optimizes for simplicity in smaller/local fleets: peer discovery, secure transfer modes, merging, and backup of `.env` state without managing a dedicated secrets server.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Feature comparison</h2>
+    <table>
+      <thead>
+        <tr><th>Dimension</th><th>env-sync</th><th>Vault</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Architecture</td><td>Peer-to-peer local mesh</td><td>Centralized service/API platform</td></tr>
+        <tr><td>Secret lifecycle depth</td><td>Static file sync + merge workflow</td><td>Dynamic secrets, leases, renewal, revocation</td></tr>
+        <tr><td>Policy &amp; auth model</td><td>Mode-level trust boundaries and host authorization</td><td>Rich auth methods + fine-grained policy controls</td></tr>
+        <tr><td>Audit and compliance</td><td>Operational logging and local metadata trail</td><td>Comprehensive audit-device ecosystem</td></tr>
+        <tr><td>Operational overhead</td><td>Low, lightweight local operation</td><td>Higher, requires operating central Vault infrastructure</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>When teams usually choose one over the other</h2>
+    <ul>
+      <li>Choose <strong>Vault</strong> if you need dynamic credentials, strict centralized policy enforcement, and enterprise-grade compliance controls.</li>
+      <li>Choose <strong>env-sync</strong> if you need practical local-network host parity without onboarding a full central secrets stack.</li>
+      <li>Many organizations also use both: Vault for production control plane, env-sync for local/offline development fleets.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Research notes (March 2026)</h2>
+    <p>Vault’s official materials continue to emphasize dynamic secrets, identity-based access, and auditing in centralized deployments. env-sync continues to target local-first operations with explicit trusted-owner and secure-peer modes for practical multi-machine sync.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Sources</h2>
+    <ul>
+      <li><a href="https://developer.hashicorp.com/vault/docs">Vault official documentation</a></li>
+      <li><a href="https://github.com/hashicorp/vault">Vault GitHub repository</a></li>
+      <li><a href="https://github.com/championswimmer/env.sync.local">env-sync repository docs</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

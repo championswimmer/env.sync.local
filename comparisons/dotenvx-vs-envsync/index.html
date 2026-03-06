@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>dotenvx vs env-sync | 2026 comparison</title>
+  <meta name="description" content="Detailed comparison of dotenvx and env-sync: encrypted env files and runtime injection vs peer-to-peer LAN .env synchronization." />
+  <link rel="canonical" href="https://envsync.arnav.tech/comparisons/dotenvx-vs-envsync" />
+  <link rel="stylesheet" href="../../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../../">env-sync</a></div></header>
+<main>
+  <h1>dotenvx vs env-sync</h1>
+  <section class="hero-media">
+    <div class="panel">
+      <p><strong>Quick take:</strong> dotenvx is built around encrypted dotenv files and runtime env injection, while env-sync is built around syncing secrets across peer machines on a local network without a central control plane.</p>
+      <img src="../../assets/cover.png" alt="dotenvx vs env-sync comparison preview" />
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>What each product optimizes for</h2>
+    <p><strong>dotenvx</strong> focuses on developer and CI workflows where `.env` files are encrypted, committed, and injected at runtime via CLI commands. It emphasizes cross-language support and multi-environment dotenv management.</p>
+    <p><strong>env-sync</strong> focuses on host-to-host consistency in local networks. It discovers peers, pulls secrets over SSH or mTLS (depending on mode), merges changes, and keeps machines aligned without central SaaS dependencies.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Feature comparison</h2>
+    <table>
+      <thead>
+        <tr><th>Dimension</th><th>env-sync</th><th>dotenvx</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Primary job</td><td>Sync secrets across machines in a LAN peer mesh</td><td>Encrypt/load dotenv files and inject env vars at runtime</td></tr>
+        <tr><td>Networking model</td><td>mDNS discovery + SSH / HTTPS+mTLS transport</td><td>No native peer discovery or sync transport</td></tr>
+        <tr><td>Operational shape</td><td>Distributed local tool, no central server required</td><td>CLI workflow used per app command and environment files</td></tr>
+        <tr><td>Conflict behavior</td><td>Version/timestamp-aware merge and backup workflow</td><td>Primarily file-level encryption + runtime load behavior</td></tr>
+        <tr><td>Where it shines</td><td>Keeping developer workstations and LAN nodes consistent</td><td>Securing dotenv usage in repos and CI/CD pipelines</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>When teams usually choose one over the other</h2>
+    <ul>
+      <li>Choose <strong>dotenvx</strong> when your pain is secure `.env` distribution/injection across app runtimes and CI steps.</li>
+      <li>Choose <strong>env-sync</strong> when your pain is multi-host drift and you need LAN-first, peer-to-peer synchronization with explicit trust modes.</li>
+      <li>Some teams combine both: dotenvx patterns inside app runtime, env-sync for cross-machine parity in local infrastructure.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Research notes (March 2026)</h2>
+    <p>Current dotenvx messaging emphasizes secure dotenv workflows from the creator of dotenv, encrypted env files, and CLI-driven runtime injection. env-sync remains intentionally scoped to distributed machine sync with explicit operation modes for trust boundaries.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Sources</h2>
+    <ul>
+      <li><a href="https://dotenvx.com/docs/">dotenvx official documentation</a></li>
+      <li><a href="https://github.com/dotenvx/dotenvx">dotenvx GitHub repository</a></li>
+      <li><a href="https://github.com/championswimmer/env.sync.local">env-sync repository docs</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

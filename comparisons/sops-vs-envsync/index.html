@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SOPS vs env-sync | 2026 comparison</title>
+  <meta name="description" content="Detailed comparison of SOPS and env-sync: encrypted file editing and key backends vs LAN peer-to-peer secret synchronization." />
+  <link rel="canonical" href="https://envsync.arnav.tech/comparisons/sops-vs-envsync" />
+  <link rel="stylesheet" href="../../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../../">env-sync</a></div></header>
+<main>
+  <h1>SOPS vs env-sync</h1>
+  <section class="hero-media">
+    <div class="panel">
+      <p><strong>Quick take:</strong> SOPS is an encrypted file workflow for Git and IaC pipelines, while env-sync is a local-network synchronization engine for `.env`-style secrets across machines.</p>
+      <img src="../../assets/cover.png" alt="SOPS vs env-sync comparison preview" />
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>What each product optimizes for</h2>
+    <p><strong>SOPS</strong> is designed for keeping sensitive files encrypted in source control with support for structured formats (YAML/JSON/ENV/INI) and multiple key backends like age, cloud KMS providers, and PGP.</p>
+    <p><strong>env-sync</strong> is designed for operational consistency across peers in local networks by combining discovery, transfer, merge, and backup behavior in one tool.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Feature comparison</h2>
+    <table>
+      <thead>
+        <tr><th>Dimension</th><th>env-sync</th><th>SOPS</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Primary job</td><td>Synchronize secrets state between machines</td><td>Encrypt/decrypt and edit secrets files</td></tr>
+        <tr><td>Delivery model</td><td>Live peer sync with SSH or HTTPS+mTLS modes</td><td>File-centric workflow, often GitOps/IaC driven</td></tr>
+        <tr><td>Key integrations</td><td>AGE + transport identity for mode-aware sync</td><td>AWS KMS, GCP KMS, Azure Key Vault, age, PGP, more</td></tr>
+        <tr><td>Conflict handling</td><td>Version and per-key timestamp merge behavior</td><td>Encryption tooling; merge policy handled externally</td></tr>
+        <tr><td>Where it shines</td><td>Local mesh consistency for workstations/servers</td><td>Encrypted config files in repositories and pipelines</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>When teams usually choose one over the other</h2>
+    <ul>
+      <li>Choose <strong>SOPS</strong> when your core workflow is Git-managed encrypted files and you already rely on KMS/PGP/age policies in CI/CD.</li>
+      <li>Choose <strong>env-sync</strong> when you need multi-host secret convergence on a LAN with minimal central infrastructure.</li>
+      <li>Teams that need both can use SOPS for repo-at-rest encryption and env-sync for runtime host parity.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Research notes (March 2026)</h2>
+    <p>SOPS continues to be positioned as a simple and flexible encrypted file editor integrated with modern key backends. env-sync remains intentionally focused on peer synchronization behavior, trust-mode selection, and local-network operations.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Sources</h2>
+    <ul>
+      <li><a href="https://github.com/getsops/sops">SOPS GitHub repository</a></li>
+      <li><a href="https://getsops.io/docs/">SOPS documentation</a></li>
+      <li><a href="https://github.com/championswimmer/env.sync.local">env-sync repository docs</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

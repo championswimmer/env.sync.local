@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Doppler vs env-sync | 2026 comparison</title>
+  <meta name="description" content="Detailed comparison of Doppler and env-sync: centralized cloud-oriented secrets operations vs LAN-first peer synchronization." />
+  <link rel="canonical" href="https://envsync.arnav.tech/comparisons/doppler-vs-envsync" />
+  <link rel="stylesheet" href="../../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../../">env-sync</a></div></header>
+<main>
+  <h1>Doppler vs env-sync</h1>
+  <section class="hero-media">
+    <div class="panel">
+      <p><strong>Quick take:</strong> Doppler is a centralized secrets operations platform built around projects/configs and runtime delivery, while env-sync is built for decentralized peer synchronization across local machines.</p>
+      <img src="../../assets/cover.png" alt="Doppler vs env-sync comparison preview" />
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>What each product optimizes for</h2>
+    <p><strong>Doppler</strong> optimizes for centralized configuration governance, managed secret delivery, and broad integration into CI/CD and cloud workflows using its CLI and service/token model.</p>
+    <p><strong>env-sync</strong> optimizes for local-first reliability where machines on the same network need converged `.env` state without introducing a central control service.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Feature comparison</h2>
+    <table>
+      <thead>
+        <tr><th>Dimension</th><th>env-sync</th><th>Doppler</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Control model</td><td>Distributed peers, no control-plane dependency</td><td>Centralized workspace/project/config model</td></tr>
+        <tr><td>Secret delivery pattern</td><td>Synchronizes file state across LAN machines</td><td>Injects secrets into runtime and CI commands</td></tr>
+        <tr><td>Connectivity assumptions</td><td>LAN-first with SSH/mTLS modes</td><td>Cloud-connected workflow with CLI/API integrations</td></tr>
+        <tr><td>Governance depth</td><td>Local trust-mode and peer controls</td><td>Centralized audit/activity and role-based access workflows</td></tr>
+        <tr><td>Best fit</td><td>Self-managed local mesh secret parity</td><td>Cloud-first teams standardizing secret operations</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>When teams usually choose one over the other</h2>
+    <ul>
+      <li>Choose <strong>Doppler</strong> when you want centralized governance and managed secret delivery across services and pipelines.</li>
+      <li>Choose <strong>env-sync</strong> when your key need is low-overhead peer sync in local/offline environments.</li>
+      <li>Some teams pair a centralized platform for cloud apps and env-sync for local edge/developer machine consistency.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Research notes (March 2026)</h2>
+    <p>Doppler documentation and CLI materials continue to emphasize centralized configuration management, runtime injection, and operational audit visibility. env-sync remains focused on decentralized syncing semantics for local-machine clusters.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Sources</h2>
+    <ul>
+      <li><a href="https://docs.doppler.com/docs/cli">Doppler CLI documentation</a></li>
+      <li><a href="https://github.com/DopplerHQ/cli">Doppler CLI GitHub repository</a></li>
+      <li><a href="https://github.com/championswimmer/env.sync.local">env-sync repository docs</a></li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
