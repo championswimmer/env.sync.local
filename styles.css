@@ -74,6 +74,50 @@ nav ul li a:hover {
   opacity: 1;
   text-decoration: none;
 }
+nav ul li.dropdown {
+  position: relative;
+}
+nav ul li.dropdown > a::after {
+  content: " ▾";
+  font-size: 0.7em;
+  opacity: 0.7;
+}
+nav ul li.dropdown .dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 0.5rem);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17, 18, 35, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.4rem 0;
+  min-width: 180px;
+  box-shadow: 0 12px 30px rgba(4, 6, 18, 0.5);
+  backdrop-filter: blur(8px);
+  z-index: 20;
+  list-style: none;
+}
+nav ul li.dropdown .dropdown-menu li {
+  margin: 0;
+}
+nav ul li.dropdown .dropdown-menu li a {
+  display: block;
+  padding: 0.45rem 1rem;
+  font-size: 0.88rem;
+  white-space: nowrap;
+  opacity: 0.85;
+  transition: opacity 0.15s, background 0.15s;
+}
+nav ul li.dropdown .dropdown-menu li a:hover {
+  opacity: 1;
+  background: rgba(151, 201, 255, 0.1);
+  text-decoration: none;
+}
+nav ul li.dropdown:hover .dropdown-menu,
+nav ul li.dropdown:focus-within .dropdown-menu {
+  display: block;
+}
 .nav .github-link {
   display: inline-flex;
   align-items: center;
