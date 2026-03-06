@@ -19,6 +19,7 @@
   <meta name="keywords" content="env sync, dotenv sync, secrets management, peer-to-peer, local network, mDNS, SSH, mTLS, AGE encryption, open source" />
   <meta name="author" content="env-sync contributors" />
   <link rel="stylesheet" href="./styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" />
 </head>
 <body>
 <header>
@@ -31,7 +32,7 @@
       <li><a href="./security">Security</a></li>
       <li><a href="./comparisons">Comparisons</a></li>
     </ul></nav>
-    <a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a>
+    <a class="github-link" href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> GitHub</a>
   </div>
 </header>
 <main>
@@ -41,14 +42,14 @@
       <h1>Stop copying <span class="highlight">.env</span> files<br/>between machines</h1>
       <p>env-sync keeps secrets in sync across every machine on your local network — automatically. No central server, no cloud dependency, no manual copy-paste.</p>
       <p>
-        <span class="badge">Open Source</span>
-        <span class="badge">mDNS Auto-Discovery</span>
-        <span class="badge">SSH &amp; mTLS Transport</span>
-        <span class="badge">AGE Encryption</span>
+        <span class="badge"><i class="fa-brands fa-osi"></i> Open Source</span>
+        <span class="badge"><i class="fa-solid fa-satellite-dish"></i> mDNS Auto-Discovery</span>
+        <span class="badge"><i class="fa-solid fa-terminal"></i> SSH &amp; <i class="fa-solid fa-shield-halved"></i> mTLS Transport</span>
+        <span class="badge"><i class="fa-solid fa-lock"></i> AGE Encryption</span>
       </p>
       <div class="cta-row">
         <a class="btn btn-primary" href="./installation">Get started — it's free</a>
-        <a class="btn btn-secondary" href="https://github.com/championswimmer/env.sync.local">View on GitHub</a>
+        <a class="btn btn-secondary" href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> View on GitHub</a>
       </div>
     </div>
     <img src="./assets/cover.png" alt="env-sync peer-to-peer secrets synchronization across local machines" />
@@ -67,11 +68,11 @@ env-sync sync</code></pre>
 
   <!-- Trust bar -->
   <div class="trust-bar">
-    <span>🔒 End-to-end encrypted</span>
-    <span>🖥️ Linux, macOS &amp; WSL2</span>
-    <span>⚡ Written in Go</span>
-    <span>📡 Zero-config discovery</span>
-    <span>🆓 100% open source</span>
+    <span><i class="fa-solid fa-lock"></i> End-to-end encrypted</span>
+    <span><i class="fa-solid fa-desktop"></i> Linux, macOS &amp; WSL2</span>
+    <span><i class="fa-brands fa-golang"></i> Written in Go</span>
+    <span><i class="fa-solid fa-satellite-dish"></i> Zero-config discovery</span>
+    <span><i class="fa-brands fa-osi"></i> 100% open source</span>
   </div>
 
   <!-- How it works -->
@@ -81,16 +82,16 @@ env-sync sync</code></pre>
   </div>
   <div class="steps">
     <article class="panel step">
-      <h3>Install</h3>
+      <h3><i class="fa-solid fa-download"></i> Install</h3>
       <p>One-liner install on every machine. Works on Linux, macOS, and WSL2.</p>
     </article>
     <article class="panel step">
-      <h3>Initialize</h3>
+      <h3><i class="fa-solid fa-key"></i> Initialize</h3>
       <p>Run <code>env-sync init</code> to set up keys and choose your security mode.</p>
     </article>
     <article class="panel step">
-      <h3>Sync</h3>
-      <p>Peers discover each other via mDNS. Secrets merge automatically with backups.</p>
+      <h3><i class="fa-solid fa-rotate"></i> Sync</h3>
+      <p>Peers discover each other via <i class="fa-solid fa-satellite-dish"></i> mDNS. Secrets merge automatically with backups.</p>
     </article>
   </div>
 
@@ -101,32 +102,32 @@ env-sync sync</code></pre>
   </div>
   <div class="features">
     <article class="panel feature">
-      <div class="icon">🔍</div>
+      <div class="icon"><i class="fa-solid fa-satellite-dish"></i></div>
       <h3>Auto-discovery with mDNS</h3>
       <p>Machines find each other automatically using Avahi or Bonjour. No manual IP configuration needed.</p>
     </article>
     <article class="panel feature">
-      <div class="icon">🔐</div>
+      <div class="icon"><i class="fa-solid fa-shield-halved"></i></div>
       <h3>Three security modes</h3>
       <p>From zero-config SSH for personal devices to mTLS + AGE encryption for cross-team collaboration.</p>
     </article>
     <article class="panel feature">
-      <div class="icon">🔄</div>
+      <div class="icon"><i class="fa-solid fa-rotate"></i></div>
       <h3>Smart merge &amp; backup</h3>
       <p>Per-key timestamps prevent data loss. Automatic backups before every write — keeps last 5 versions.</p>
     </article>
     <article class="panel feature">
-      <div class="icon">⚡</div>
+      <div class="icon"><i class="fa-brands fa-golang"></i></div>
       <h3>Lightweight &amp; fast</h3>
       <p>Single Go binary. No runtime dependencies, no background database, no Docker required.</p>
     </article>
     <article class="panel feature">
-      <div class="icon">🕐</div>
+      <div class="icon"><i class="fa-solid fa-clock"></i></div>
       <h3>Sync on autopilot</h3>
       <p>Cron-based sync every 30 minutes, shell hook on startup, or manual trigger — your choice.</p>
     </article>
     <article class="panel feature">
-      <div class="icon">👥</div>
+      <div class="icon"><i class="fa-solid fa-users"></i></div>
       <h3>Peer management</h3>
       <p>Invite, approve, and revoke peers with signed membership events that propagate automatically.</p>
     </article>
@@ -141,9 +142,9 @@ env-sync sync</code></pre>
     <table>
       <thead><tr><th>Mode</th><th>Storage</th><th>Transport</th><th>Best for</th></tr></thead>
       <tbody>
-        <tr><td><strong>trusted-owner-ssh</strong> (default)</td><td>Plaintext (optional AGE)</td><td>SCP / SSH</td><td>All machines belong to you — your laptop, desktop, NUC, server</td></tr>
-        <tr><td><strong>secure-peer</strong></td><td>AGE encrypted (mandatory)</td><td>HTTPS + mTLS</td><td>Multiple people sharing secrets without giving each other shell access</td></tr>
-        <tr><td><strong>dev-plaintext-http</strong></td><td>Plaintext</td><td>HTTP</td><td>Quick local debugging only — not for real secrets</td></tr>
+        <tr><td><strong>trusted-owner-ssh</strong> (default)</td><td>Plaintext (optional AGE)</td><td><i class="fa-solid fa-terminal"></i> SCP / SSH</td><td>All machines belong to you — your laptop, desktop, NUC, server</td></tr>
+        <tr><td><strong>secure-peer</strong></td><td>AGE encrypted (mandatory)</td><td><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS</td><td>Multiple people sharing secrets without giving each other shell access</td></tr>
+        <tr><td><strong>dev-plaintext-http</strong></td><td>Plaintext</td><td><i class="fa-solid fa-network-wired"></i> HTTP</td><td>Quick local debugging only — not for real secrets</td></tr>
       </tbody>
     </table>
     <div style="text-align:center;margin-top:1rem;">
@@ -200,7 +201,7 @@ env-sync sync</code></pre>
     <div>
       <div class="footer-brand">env-sync</div>
       <p>Distributed .env sync for local networks.</p>
-      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> GitHub</a></p>
     </div>
     <div class="footer-links">
       <div>
@@ -225,8 +226,8 @@ env-sync sync</code></pre>
       </div>
       <div>
         <h4>Resources</h4>
-        <a href="https://github.com/championswimmer/env.sync.local">Source code</a>
-        <a href="https://github.com/championswimmer/env.sync.local/issues">Report an issue</a>
+        <a href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> Source code</a>
+        <a href="https://github.com/championswimmer/env.sync.local/issues"><i class="fa-brands fa-github"></i> Report an issue</a>
       </div>
     </div>
   </div>

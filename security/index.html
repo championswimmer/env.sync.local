@@ -17,9 +17,10 @@
   <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
   <meta name="keywords" content="env-sync security, mTLS, AGE encryption, certificate pinning, threat model, peer-to-peer security, secrets encryption" />
   <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li class="dropdown"><a href="../installation">Install</a><ul class="dropdown-menu"><li><a href="../installation/quickstart">Quickstart</a></li><li><a href="../installation/trusted-peers">Trusted Peers Setup</a></li><li><a href="../installation/secure-peers">Secure Peers Setup</a></li></ul></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li class="dropdown"><a href="../installation">Install</a><ul class="dropdown-menu"><li><a href="../installation/quickstart">Quickstart</a></li><li><a href="../installation/trusted-peers">Trusted Peers Setup</a></li><li><a href="../installation/secure-peers">Secure Peers Setup</a></li></ul></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> GitHub</a></div></header>
 <main>
   <div class="subpage-hero">
     <h1>Security architecture</h1>
@@ -32,8 +33,8 @@
       <thead><tr><th>Dimension</th><th>dev-plaintext-http</th><th>trusted-owner-ssh</th><th>secure-peer</th></tr></thead>
       <tbody>
         <tr><td><strong>Encryption at rest</strong></td><td>None</td><td>Plaintext default (optional AGE)</td><td>AGE encrypted (mandatory)</td></tr>
-        <tr><td><strong>Encryption in transit</strong></td><td>None</td><td>SSH encryption</td><td>HTTPS + mTLS (TLS 1.3)</td></tr>
-        <tr><td><strong>Peer authentication</strong></td><td>None</td><td>SSH keys</td><td>Mutual TLS certificates + approval</td></tr>
+        <tr><td><strong>Encryption in transit</strong></td><td>None</td><td><i class="fa-solid fa-terminal"></i> SSH encryption</td><td><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS (TLS 1.3)</td></tr>
+        <tr><td><strong>Peer authentication</strong></td><td>None</td><td><i class="fa-solid fa-terminal"></i> SSH keys</td><td><i class="fa-solid fa-shield-halved"></i> Mutual TLS certificates + approval</td></tr>
         <tr><td><strong>Risk level</strong></td><td>Debug only — not for real secrets</td><td>Strong when all hosts are equally trusted</td><td>Strong for cross-owner boundaries</td></tr>
       </tbody>
     </table>
@@ -72,10 +73,10 @@
     <table>
       <thead><tr><th>Component</th><th>Algorithm</th><th>Purpose</th></tr></thead>
       <tbody>
-        <tr><td>AGE encryption</td><td>X25519 + ChaCha20-Poly1305</td><td>At-rest encryption of secret values</td></tr>
-        <tr><td>mTLS certificates</td><td>TLS 1.3 (X.509)</td><td>In-transit encryption and peer authentication</td></tr>
-        <tr><td>Membership events</td><td>Signed with transport key</td><td>Cryptographic proof of peer approval/revocation</td></tr>
-        <tr><td>SSH transport</td><td>Ed25519 / RSA keys</td><td>Encrypted file transfer in trusted-owner mode</td></tr>
+        <tr><td><i class="fa-solid fa-lock"></i> AGE encryption</td><td>X25519 + ChaCha20-Poly1305</td><td>At-rest encryption of secret values</td></tr>
+        <tr><td><i class="fa-solid fa-shield-halved"></i> mTLS certificates</td><td>TLS 1.3 (X.509)</td><td>In-transit encryption and peer authentication</td></tr>
+        <tr><td><i class="fa-solid fa-certificate"></i> Membership events</td><td>Signed with transport key</td><td>Cryptographic proof of peer approval/revocation</td></tr>
+        <tr><td><i class="fa-solid fa-terminal"></i> SSH transport</td><td>Ed25519 / RSA keys</td><td>Encrypted file transfer in trusted-owner mode</td></tr>
       </tbody>
     </table>
   </section>
@@ -83,12 +84,12 @@
   <section class="panel">
     <h2>Operational security checklist</h2>
     <ul>
-      <li>✅ Keep file permissions strict — <code>600</code> for secrets files.</li>
-      <li>✅ Never log secret values — env-sync's logging respects this boundary.</li>
-      <li>✅ Audit approved peers regularly in secure-peer mode.</li>
-      <li>✅ Use backups and key lifecycle controls during membership changes.</li>
-      <li>✅ Enable AGE encryption in trusted-owner mode for defense-in-depth.</li>
-      <li>✅ Revoke and rotate keys for any compromised peer immediately.</li>
+      <li><i class="fa-solid fa-circle-check"></i> Keep file permissions strict — <code>600</code> for secrets files.</li>
+      <li><i class="fa-solid fa-circle-check"></i> Never log secret values — env-sync's logging respects this boundary.</li>
+      <li><i class="fa-solid fa-circle-check"></i> Audit approved peers regularly in secure-peer mode.</li>
+      <li><i class="fa-solid fa-circle-check"></i> Use backups and key lifecycle controls during membership changes.</li>
+      <li><i class="fa-solid fa-circle-check"></i> Enable AGE encryption in trusted-owner mode for defense-in-depth.</li>
+      <li><i class="fa-solid fa-circle-check"></i> Revoke and rotate keys for any compromised peer immediately.</li>
     </ul>
   </section>
 
@@ -106,7 +107,7 @@
     <div>
       <div class="footer-brand">env-sync</div>
       <p>Distributed .env sync for local networks.</p>
-      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> GitHub</a></p>
     </div>
     <div class="footer-links">
       <div>

@@ -17,9 +17,10 @@
   <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
   <meta name="keywords" content="env-sync modes, SSH sync, mTLS secrets, AGE encryption, trusted-owner, secure-peer, security modes" />
   <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6/css/all.min.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li class="dropdown"><a href="../installation">Install</a><ul class="dropdown-menu"><li><a href="../installation/quickstart">Quickstart</a></li><li><a href="../installation/trusted-peers">Trusted Peers Setup</a></li><li><a href="../installation/secure-peers">Secure Peers Setup</a></li></ul></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li class="dropdown"><a href="../installation">Install</a><ul class="dropdown-menu"><li><a href="../installation/quickstart">Quickstart</a></li><li><a href="../installation/trusted-peers">Trusted Peers Setup</a></li><li><a href="../installation/secure-peers">Secure Peers Setup</a></li></ul></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> GitHub</a></div></header>
 <main>
   <div class="subpage-hero">
     <h1>Three modes, one CLI</h1>
@@ -32,8 +33,8 @@
       <thead><tr><th>Dimension</th><th>dev-plaintext-http</th><th>trusted-owner-ssh</th><th>secure-peer</th></tr></thead>
       <tbody>
         <tr><td><strong>Storage</strong></td><td>Plaintext</td><td>Plaintext (optional AGE)</td><td>AGE encrypted (mandatory)</td></tr>
-        <tr><td><strong>Transport</strong></td><td>HTTP</td><td>SCP / SSH</td><td>HTTPS + mTLS</td></tr>
-        <tr><td><strong>Onboarding</strong></td><td>Open — any peer on the network</td><td>Zero-touch if SSH access exists</td><td>Invitation + explicit approval</td></tr>
+        <tr><td><strong>Transport</strong></td><td><i class="fa-solid fa-network-wired"></i> HTTP</td><td><i class="fa-solid fa-terminal"></i> SCP / SSH</td><td><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS</td></tr>
+        <tr><td><strong>Onboarding</strong></td><td>Open — any peer on the network</td><td>Zero-touch if <i class="fa-solid fa-terminal"></i> SSH access exists</td><td>Invitation + explicit approval</td></tr>
         <tr><td><strong>Authorization</strong></td><td>None</td><td>Implicit via SSH trust</td><td>Explicit approved / revoked states</td></tr>
         <tr><td><strong>Best for</strong></td><td>Local debugging only</td><td>All your own machines</td><td>Multiple owners sharing secrets</td></tr>
       </tbody>
@@ -51,8 +52,8 @@
     <p>Ideal when every machine belongs to you. SSH provides encrypted transport and authentication automatically. Storage is plaintext by default because trust is already broad in this model; optional AGE encryption can be enabled for defense-in-depth.</p>
     <h3>How sync works</h3>
     <ol>
-      <li>Discover peers with mDNS, filter by SSH reachability.</li>
-      <li>Fetch secrets from peers via SCP/SSH.</li>
+      <li><i class="fa-solid fa-satellite-dish"></i> Discover peers with mDNS, filter by SSH reachability.</li>
+      <li><i class="fa-solid fa-terminal"></i> Fetch secrets from peers via SCP/SSH.</li>
       <li>Compare metadata versions and timestamps.</li>
       <li>Merge changes and write locally with automatic backup.</li>
     </ol>
@@ -64,9 +65,9 @@
     <p>Designed for cross-owner collaboration. No shell access is shared between peers — mTLS handles authentication and AGE handles encryption at rest. Access requires an explicit invitation and approval step.</p>
     <h3>How sync works</h3>
     <ol>
-      <li>Discover peers over mDNS.</li>
-      <li>Establish mTLS connection and verify authorization.</li>
-      <li>Fetch encrypted secrets and decrypt locally with your AGE key.</li>
+      <li><i class="fa-solid fa-satellite-dish"></i> Discover peers over mDNS.</li>
+      <li><i class="fa-solid fa-shield-halved"></i> Establish mTLS connection and verify authorization.</li>
+      <li><i class="fa-solid fa-lock"></i> Fetch encrypted secrets and decrypt locally with your AGE key.</li>
       <li>Merge using per-key timestamps for granular conflict resolution.</li>
       <li>Re-encrypt to all known recipients and save with backup.</li>
       <li>Replay signed membership events for offline catch-up.</li>
@@ -78,17 +79,17 @@
     <h2>Choosing the right mode</h2>
     <div class="features" style="margin:1rem 0 0;">
       <article class="panel feature">
-        <div class="icon">🏠</div>
+        <div class="icon"><i class="fa-solid fa-house"></i></div>
         <h3>Personal fleet</h3>
         <p>Use <strong>trusted-owner-ssh</strong>. Your laptop, desktop, server, NUC — all behind SSH trust you already manage.</p>
       </article>
       <article class="panel feature">
-        <div class="icon">👥</div>
+        <div class="icon"><i class="fa-solid fa-users"></i></div>
         <h3>Team collaboration</h3>
         <p>Use <strong>secure-peer</strong>. Team members get secrets without SSH access to each other's machines.</p>
       </article>
       <article class="panel feature">
-        <div class="icon">🔧</div>
+        <div class="icon"><i class="fa-solid fa-wrench"></i></div>
         <h3>Quick debugging</h3>
         <p>Use <strong>dev-plaintext-http</strong>. Fast setup for throwaway testing — never store real credentials here.</p>
       </article>
@@ -109,7 +110,7 @@
     <div>
       <div class="footer-brand">env-sync</div>
       <p>Distributed .env sync for local networks.</p>
-      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> GitHub</a></p>
     </div>
     <div class="footer-links">
       <div>
