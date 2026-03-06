@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Installation guide | env-sync</title>
+  <meta name="description" content="Install env-sync on Linux, macOS, and WSL2, including prerequisites, upgrades, and troubleshooting." />
+  <link rel="canonical" href="https://envsync.arnav.tech/installation" />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<main>
+  <h1>Installation guide</h1>
+  <section class="panel">
+    <h2>Prerequisites</h2>
+    <ul>
+      <li>Go 1.24+ (only for source builds)</li>
+      <li>SSH client for <code>trusted-owner-ssh</code> mode</li>
+      <li>mDNS support: Avahi on Linux, Bonjour on macOS, relay/workaround in WSL2</li>
+    </ul>
+  </section>
+  <section class="panel">
+    <h2>Quick install (recommended)</h2>
+    <pre><code># system install
+curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | sudo bash
+
+# user install
+curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | bash -s -- --user</code></pre>
+    <p>Installer can download prebuilt releases and handles service stop/restart during upgrade.</p>
+  </section>
+  <section class="panel">
+    <h2>Build from source</h2>
+    <pre><code>git clone https://github.com/championswimmer/env.sync.local.git
+cd env.sync.local
+make build
+make test
+sudo make install  # or make install-user</code></pre>
+  </section>
+  <section class="panel">
+    <h2>Platform notes</h2>
+    <h3>Linux</h3>
+    <pre><code>sudo apt-get install -y avahi-daemon avahi-utils</code></pre>
+    <h3>macOS</h3>
+    <p>Bonjour is built-in. Service management uses <code>launchd</code>.</p>
+    <h3>Windows (WSL2)</h3>
+    <p>Prefer running on Windows host, or configure Avahi reflector in WSL2.</p>
+  </section>
+  <section class="panel">
+    <h2>Post-install setup and verification</h2>
+    <pre><code>env-sync --version
+env-sync mode get
+env-sync init
+env-sync status
+env-sync discover
+env-sync cron --install</code></pre>
+  </section>
+  <section class="panel">
+    <h2>Upgrade / uninstall</h2>
+    <pre><code># upgrade
+sudo ./install.sh
+
+# uninstall
+env-sync service uninstall
+rm -rf ~/.config/env-sync
+sudo rm -f /usr/local/bin/env-sync</code></pre>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mode differences | env-sync</title>
+  <meta name="description" content="Compare env-sync operation modes: dev-plaintext-http, trusted-owner-ssh, and secure-peer." />
+  <link rel="canonical" href="https://envsync.arnav.tech/modes" />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<main>
+  <h1>Differences in modes</h1>
+  <section class="panel">
+    <table>
+      <thead><tr><th>Mode</th><th>Storage</th><th>Transport</th><th>Onboarding</th><th>Authorization model</th></tr></thead>
+      <tbody>
+        <tr><td>dev-plaintext-http</td><td>Plaintext</td><td>HTTP</td><td>Open</td><td>None</td></tr>
+        <tr><td>trusted-owner-ssh (default)</td><td>Plaintext by default, optional AGE</td><td>SCP/SSH</td><td>Zero-touch new machine if SSH access exists</td><td>Implicit via SSH trust</td></tr>
+        <tr><td>secure-peer</td><td>AGE encrypted mandatory</td><td>HTTPS + mTLS</td><td>Invitation + approval required</td><td>Explicit approved/revoked states</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Mode A: dev-plaintext-http</h2>
+    <p>Debug-only mode. No encryption at rest, no transport protection, and no authentication.</p>
+  </section>
+  <section class="panel">
+    <h2>Mode B: trusted-owner-ssh</h2>
+    <p>Default mode for same-owner devices. SSH provides encrypted transport and authentication. Storage is plaintext by default because trust is already broad in this model; optional encryption can be enabled for defense-in-depth.</p>
+    <h3>Sync strategy</h3>
+    <ol>
+      <li>Discover peers with mDNS and SSH reachability checks.</li>
+      <li>Fetch secrets via SCP/SSH.</li>
+      <li>Compare metadata versions/timestamps.</li>
+      <li>Merge and write local file (with backup).</li>
+    </ol>
+  </section>
+  <section class="panel">
+    <h2>Mode C: secure-peer</h2>
+    <p>Designed for cross-owner collaboration: no shell access needed between peers, mandatory AGE encryption, and mTLS-authenticated HTTPS transfer.</p>
+    <h3>Sync strategy</h3>
+    <ol>
+      <li>Discover peers over mDNS.</li>
+      <li>Establish mTLS and verify authorization.</li>
+      <li>Fetch encrypted secrets and decrypt locally.</li>
+      <li>Merge using per-key timestamps.</li>
+      <li>Re-encrypt to all known recipients and save backup.</li>
+      <li>Replay signed membership events for offline catch-up.</li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>Choosing the right mode</h2>
+    <ul>
+      <li>Use <strong>trusted-owner-ssh</strong> for your own machines where SSH trust already exists.</li>
+      <li>Use <strong>secure-peer</strong> when different owners collaborate but should not share shell access.</li>
+      <li>Use <strong>dev-plaintext-http</strong> only in isolated local debugging contexts.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Usage guide | env-sync</title>
+  <meta name="description" content="Complete env-sync usage: mode management, peer onboarding, secret operations, sync, cron, backup restore, and troubleshooting." />
+  <link rel="canonical" href="https://envsync.arnav.tech/usage" />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<main>
+  <h1>Usage guide</h1>
+  <section class="panel">
+    <h2>Quick commands</h2>
+    <pre><code>env-sync           # sync
+env-sync status
+env-sync discover
+env-sync --help</code></pre>
+  </section>
+  <section class="panel">
+    <h2>Mode management</h2>
+    <pre><code>env-sync mode get
+env-sync mode set trusted-owner-ssh
+env-sync mode set secure-peer
+env-sync mode set dev-plaintext-http
+env-sync mode set secure-peer --yes
+env-sync mode set trusted-owner-ssh --prune-old-material --yes</code></pre>
+  </section>
+  <section class="panel">
+    <h2>Peer management</h2>
+    <p><strong>secure-peer mode:</strong> invite, request access, approve/revoke, trust inspection.</p>
+    <pre><code>env-sync peer invite --expires 1h
+env-sync peer request-access --to hostname.local --token &lt;token&gt;
+env-sync peer list --pending
+env-sync peer approve new-host.local
+env-sync peer revoke compromised-host.local
+env-sync peer trust show hostname.local</code></pre>
+    <p><strong>trusted-owner mode:</strong> SSH-reachable peers can sync without explicit approval.</p>
+  </section>
+  <section class="panel">
+    <h2>Secret and sync operations</h2>
+    <pre><code>env-sync add KEY="value"
+env-sync remove KEY
+env-sync list
+env-sync show KEY
+eval "$(env-sync load 2>/dev/null)"
+
+env-sync sync
+env-sync sync hostname.local
+env-sync sync --force-pull hostname.local
+env-sync sync --dry-run</code></pre>
+    <p><code>--force-pull</code> fully overwrites local secrets from the selected host and creates a backup first.</p>
+  </section>
+  <section class="panel">
+    <h2>Service, cron, backup, and troubleshooting</h2>
+    <pre><code>env-sync serve -d
+env-sync service stop
+env-sync service restart
+env-sync service uninstall
+
+env-sync cron --install --interval 30
+env-sync cron --show
+env-sync cron --remove
+
+env-sync restore
+env-sync restore 1
+
+tail -f ~/.config/env-sync/logs/env-sync.log</code></pre>
+  </section>
+</main>
+</body>
+</html>

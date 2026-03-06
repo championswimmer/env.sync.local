@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>env-sync vs HashiCorp Vault</title><meta name="description" content="Compare env-sync and HashiCorp Vault." />
+<link rel="canonical" href="https://envsync.arnav.tech/comparisons/vault" /><link rel="stylesheet" href="../../styles.css" /></head>
+<body><header><div class="nav"><a class="brand" href="../../">env-sync</a></div></header><main>
+<h1>env-sync vs HashiCorp Vault</h1>
+<section class="panel"><p><strong>Vault</strong> provides secure central secret storage, dynamic secrets, leasing/renewal/revocation, encryption services, and detailed audit controls. <strong>env-sync</strong> is purposely lighter: decentralized local sync without a central control plane.</p></section>
+<section class="panel"><table><thead><tr><th>Dimension</th><th>env-sync</th><th>Vault</th></tr></thead><tbody>
+<tr><td>Architecture</td><td>P2P local mesh</td><td>Centralized service/API model</td></tr>
+<tr><td>Dynamic credentials</td><td>No</td><td>Yes (core capability)</td></tr>
+<tr><td>Policy/audit depth</td><td>Operational logging + mode controls</td><td>Fine-grained access and detailed audit workflows</td></tr>
+<tr><td>Operational overhead</td><td>Low</td><td>Higher (server + policy operations)</td></tr>
+</tbody></table></section>
+<section class="panel"><h2>Sources</h2><ul>
+<li><a href="https://github.com/hashicorp/vault">Vault GitHub README</a> (secure storage, dynamic secrets, leasing, revocation)</li>
+<li><a href="https://github.com/championswimmer/env.sync.local">env-sync repository docs</a></li>
+</ul></section>
+</main></body></html>

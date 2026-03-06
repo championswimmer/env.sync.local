@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>env-sync | Distributed secrets sync for local networks</title>
+  <meta name="description" content="env-sync is a distributed secrets sync tool with three security modes: trusted-owner-ssh, secure-peer, and dev-plaintext-http." />
+  <link rel="canonical" href="https://envsync.arnav.tech/" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+<header>
+  <div class="nav">
+    <a class="brand" href="./">env-sync</a>
+    <nav><ul>
+      <li><a href="./installation">Installation</a></li>
+      <li><a href="./usage">Usage</a></li>
+      <li><a href="./modes">Modes</a></li>
+      <li><a href="./security">Security</a></li>
+      <li><a href="./comparisons">Comparisons</a></li>
+    </ul></nav>
+  </div>
+</header>
+<main>
+  <section class="hero">
+    <div>
+      <h1>Distributed .env sync across local peers</h1>
+      <p>env-sync is a peer-to-peer secrets synchronization tool for local networks. No master server, automatic mDNS discovery, and explicit security models for different trust boundaries.</p>
+      <p>
+        <span class="badge">Go 1.24+</span>
+        <span class="badge">mDNS discovery</span>
+        <span class="badge">SSH / HTTPS+mTLS</span>
+        <span class="badge">AGE encryption</span>
+      </p>
+      <pre><code># install
+curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | bash -s -- --user
+
+# initialize and sync
+env-sync init
+env-sync add OPENAI_API_KEY="sk-..."
+env-sync sync</code></pre>
+    </div>
+    <img src="./assets/cover.png" alt="env-sync cover image" />
+  </section>
+
+  <section class="panel">
+    <h2>Three modes, clear trust models</h2>
+    <table>
+      <thead><tr><th>Mode</th><th>Storage</th><th>Transport</th><th>Best for</th></tr></thead>
+      <tbody>
+        <tr><td><strong>trusted-owner-ssh</strong> (default)</td><td>Plaintext (optional AGE)</td><td>SCP/SSH</td><td>All machines belong to the same owner</td></tr>
+        <tr><td><strong>secure-peer</strong></td><td>AGE encrypted (mandatory)</td><td>HTTPS + mTLS</td><td>Cross-owner collaboration without shell access</td></tr>
+        <tr><td><strong>dev-plaintext-http</strong></td><td>Plaintext</td><td>HTTP</td><td>Local debugging only</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="grid">
+    <article class="panel">
+      <h3>Architecture summary</h3>
+      <ul>
+        <li>Distributed and eventually consistent: shell startup, cron, or manual sync.</li>
+        <li>mDNS discovery on local networks (Avahi/Bonjour).</li>
+        <li>Backup before overwrite (keeps last 5 copies).</li>
+        <li>Mode-aware sync orchestration in Go.</li>
+      </ul>
+    </article>
+    <article class="panel">
+      <h3>Core workflows</h3>
+      <ul>
+        <li><strong>Trusted-owner:</strong> discover peers → SCP/SSH fetch → compare → merge → save.</li>
+        <li><strong>Secure-peer:</strong> discover → mTLS auth → authorization check → decrypt/merge → re-encrypt to recipients.</li>
+        <li><strong>Peer lifecycle:</strong> invite → request-access → approve/revoke → signed membership propagation.</li>
+      </ul>
+    </article>
+    <article class="panel">
+      <h3>Documentation map</h3>
+      <ul>
+        <li><a href="./installation">Installation guide</a> (Linux/macOS/WSL2, upgrades, uninstall).</li>
+        <li><a href="./usage">Usage guide</a> (mode, peer, secret, sync, service, cron, restore).</li>
+        <li><a href="./modes">Mode differences</a> and operational implications.</li>
+        <li><a href="./security">Security details</a>, threat model, and trust boundaries.</li>
+      </ul>
+    </article>
+  </section>
+
+  <section class="panel">
+    <h2>Project internals (v3.0)</h2>
+    <p>Major Go packages include mode management, sync orchestration, SSH and HTTPS transports, AGE crypto, peer registry, trust store, signed membership events, metadata, backups, and CLI command routing.</p>
+    <pre><code>src/internal/
+  cli/ mode/ sync/ discovery/ crypto/age/
+  transport/ssh/ transport/https/
+  peers/ peers/trust/ membership/
+  metadata/ secrets/ backup/ keys/ cron/</code></pre>
+  </section>
+
+  <footer>
+    Source docs: README.md, AGENTS.md, docs/INSTALLATION.md, docs/USAGE.md, docs/SECURITY-MODES.md.
+  </footer>
+</main>
+</body>
+</html>

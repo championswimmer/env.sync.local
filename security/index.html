@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Security guide | env-sync</title>
+  <meta name="description" content="Security architecture of env-sync: trust boundaries, mTLS, AGE, certificate pinning, and signed membership events." />
+  <link rel="canonical" href="https://envsync.arnav.tech/security" />
+  <link rel="stylesheet" href="../styles.css" />
+</head>
+<body>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<main>
+  <h1>Security of different modes</h1>
+  <section class="panel">
+    <h2>Security baseline by mode</h2>
+    <table>
+      <thead><tr><th>Mode</th><th>At-rest</th><th>In-transit</th><th>Peer auth</th><th>Risk summary</th></tr></thead>
+      <tbody>
+        <tr><td>dev-plaintext-http</td><td>None</td><td>None</td><td>None</td><td>Only for local debugging</td></tr>
+        <tr><td>trusted-owner-ssh</td><td>Plaintext default (optional AGE)</td><td>SSH encryption</td><td>SSH keys</td><td>Strong when all hosts are equally trusted</td></tr>
+        <tr><td>secure-peer</td><td>AGE encrypted</td><td>HTTPS + mTLS</td><td>Cert-based mutual auth + approval</td><td>Best for cross-owner trust boundaries</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>Secure-peer trust model</h2>
+    <ul>
+      <li>No global root CA shipped; trust is deployment-local with pinned certificates.</li>
+      <li>Peer registry tracks pending/approved/revoked states.</li>
+      <li>On approve/revoke, signed membership events replicate across peers.</li>
+      <li>Replay protection uses monotonic event IDs plus timestamp checks.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Threat-model highlights</h2>
+    <h3>trusted-owner-ssh</h3>
+    <ul>
+      <li>Strength: mature SSH transport security and operational simplicity.</li>
+      <li>Limitation: compromise of one fully trusted peer can impact others due to broad trust.</li>
+    </ul>
+    <h3>secure-peer</h3>
+    <ul>
+      <li>Strength: explicit authorization and mandatory encryption at rest.</li>
+      <li>Strength: mTLS avoids shell access sharing, reducing blast radius vs SSH trust mesh.</li>
+      <li>Operational requirement: invitation/approval workflow and identity material management.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Operational security checklist</h2>
+    <ul>
+      <li>Keep file permissions strict (<code>600</code> for secrets).</li>
+      <li>Avoid logging secret values (env-sync logging keeps this boundary).</li>
+      <li>Regularly audit approved peers in secure-peer mode.</li>
+      <li>Use backups and key lifecycle controls during membership changes.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
