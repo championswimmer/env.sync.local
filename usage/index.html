@@ -4,30 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Usage guide | env-sync</title>
-  <meta name="description" content="Complete env-sync usage: mode management, peer onboarding, secret operations, sync, cron, backup restore, and troubleshooting." />
+  <meta name="description" content="Complete env-sync usage reference: manage modes, peers, secrets, sync, backups, cron, and service lifecycle from the CLI." />
   <link rel="canonical" href="https://envsync.arnav.tech/usage" />
+  <meta property="og:title" content="Usage guide | env-sync CLI reference" />
+  <meta property="og:description" content="Complete env-sync CLI reference: manage modes, peers, secrets, sync, backups, cron, and service lifecycle." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://envsync.arnav.tech/usage" />
+  <meta property="og:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Usage guide | env-sync CLI reference" />
+  <meta name="twitter:description" content="Complete env-sync CLI reference: manage modes, peers, secrets, sync, backups, cron, and service lifecycle." />
+  <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="keywords" content="env-sync usage, env-sync CLI, secrets sync commands, peer management, dotenv sync guide" />
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
 <main>
-  <h1>Usage guide</h1>
-  <section class="hero-media">
-    <div class="panel">
-      <h2>Built for developer velocity</h2>
-      <p>From one-liners to mode switching and force-pull recovery, env-sync keeps your team fast while preserving deterministic local secrets behavior.</p>
-      <img src="../assets/cover.png" alt="env-sync usage preview" />
-    </div>
-  </section>
+  <div class="subpage-hero">
+    <h1>Usage guide</h1>
+    <p>Everything you can do with env-sync — from adding your first secret to managing peer access across machines.</p>
+  </div>
+
   <section class="panel">
     <h2>Quick commands</h2>
-    <pre><code>env-sync           # sync
-env-sync status
-env-sync discover
-env-sync --help</code></pre>
+    <p>The most common commands you will use day to day:</p>
+    <pre><code>env-sync              # sync secrets from peers
+env-sync status       # show current mode, host, peer count
+env-sync discover     # list discovered peers on the network
+env-sync --help       # full command reference</code></pre>
   </section>
+
   <section class="panel">
     <h2>Mode management</h2>
+    <p>Switch between security modes at any time. Mode switching is non-destructive by default.</p>
     <pre><code>env-sync mode get
 env-sync mode set trusted-owner-ssh
 env-sync mode set secure-peer
@@ -35,47 +45,98 @@ env-sync mode set dev-plaintext-http
 env-sync mode set secure-peer --yes
 env-sync mode set trusted-owner-ssh --prune-old-material --yes</code></pre>
   </section>
+
   <section class="panel">
     <h2>Peer management</h2>
-    <p><strong>secure-peer mode:</strong> invite, request access, approve/revoke, trust inspection.</p>
+    <p><strong>secure-peer mode</strong> — invitation-based access with explicit approval:</p>
     <pre><code>env-sync peer invite --expires 1h
 env-sync peer request-access --to hostname.local --token &lt;token&gt;
 env-sync peer list --pending
 env-sync peer approve new-host.local
 env-sync peer revoke compromised-host.local
 env-sync peer trust show hostname.local</code></pre>
-    <p><strong>trusted-owner mode:</strong> SSH-reachable peers can sync without explicit approval.</p>
+    <p><strong>trusted-owner mode</strong> — any SSH-reachable peer can sync without approval.</p>
   </section>
+
   <section class="panel">
-    <h2>Secret and sync operations</h2>
-    <pre><code>env-sync add KEY="value"
+    <h2>Secret &amp; sync operations</h2>
+    <pre><code># manage secrets
+env-sync add KEY="value"
 env-sync remove KEY
 env-sync list
 env-sync show KEY
 eval "$(env-sync load 2>/dev/null)"
 
+# sync with peers
 env-sync sync
 env-sync sync hostname.local
 env-sync sync --force-pull hostname.local
 env-sync sync --dry-run</code></pre>
-    <p><code>--force-pull</code> fully overwrites local secrets from the selected host and creates a backup first.</p>
+    <p><code>--force-pull</code> fully overwrites local secrets from the selected host. A backup is created first.</p>
   </section>
+
   <section class="panel">
-    <h2>Service, cron, backup, and troubleshooting</h2>
-    <pre><code>env-sync serve -d
+    <h2>Service, cron &amp; backups</h2>
+    <pre><code># background service
+env-sync serve -d
 env-sync service stop
 env-sync service restart
 env-sync service uninstall
 
+# automatic sync via cron
 env-sync cron --install --interval 30
 env-sync cron --show
 env-sync cron --remove
 
-env-sync restore
-env-sync restore 1
+# restore from backup
+env-sync restore       # list available backups
+env-sync restore 1     # restore specific backup</code></pre>
+  </section>
 
-tail -f ~/.config/env-sync/logs/env-sync.log</code></pre>
+  <section class="panel">
+    <h2>Troubleshooting</h2>
+    <pre><code># check the log file
+tail -f ~/.config/env-sync/logs/env-sync.log
+
+# verbose output
+env-sync sync --verbose
+
+# verify connectivity
+env-sync discover</code></pre>
+  </section>
+
+  <section class="cta-banner">
+    <h2>Need help choosing a mode?</h2>
+    <p>Learn about the three security models and when to use each one.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a class="btn btn-primary" href="../modes">Mode comparison →</a>
+      <a class="btn btn-secondary" href="../security">Security details</a>
+    </div>
   </section>
 </main>
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">env-sync</div>
+      <p>Distributed .env sync for local networks.</p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+    </div>
+    <div class="footer-links">
+      <div>
+        <h4>Product</h4>
+        <a href="../installation">Installation</a>
+        <a href="../usage">Usage</a>
+        <a href="../modes">Modes</a>
+        <a href="../security">Security</a>
+      </div>
+      <div>
+        <h4>Compare</h4>
+        <a href="../comparisons/vault-vs-envsync">vs Vault</a>
+        <a href="../comparisons/infisical-vs-envsync">vs Infisical</a>
+        <a href="../comparisons/doppler-vs-envsync">vs Doppler</a>
+      </div>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

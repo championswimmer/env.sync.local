@@ -4,67 +4,85 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Installation guide | env-sync</title>
-  <meta name="description" content="Install env-sync on Linux, macOS, and WSL2, including prerequisites, upgrades, and troubleshooting." />
+  <meta name="description" content="Install env-sync on Linux, macOS, and WSL2 in under a minute. One-liner install, zero dependencies, instant peer-to-peer secret sync." />
   <link rel="canonical" href="https://envsync.arnav.tech/installation" />
+  <meta property="og:title" content="Install env-sync | One-liner setup for Linux, macOS &amp; WSL2" />
+  <meta property="og:description" content="Install env-sync in under a minute. One command, no accounts, no server — peer-to-peer .env sync on any machine." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://envsync.arnav.tech/installation" />
+  <meta property="og:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Install env-sync | One-liner setup for Linux, macOS &amp; WSL2" />
+  <meta name="twitter:description" content="Install env-sync in under a minute. One command, no accounts, no server to provision." />
+  <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="keywords" content="env-sync install, dotenv sync setup, Linux secrets sync, macOS secrets sync, WSL2, peer-to-peer sync install" />
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
 <main>
-  <h1>Installation guide</h1>
-  <section class="hero-media">
-    <div class="panel">
-      <h2>Ship your first sync in minutes</h2>
-      <p>Install env-sync on every machine, run <code>env-sync init</code>, and you get local-network secret synchronization without standing up a central service.</p>
-      <img src="../assets/cover.png" alt="env-sync installation preview" />
-    </div>
+  <div class="subpage-hero">
+    <h1>Install env-sync</h1>
+    <p>Get peer-to-peer secret synchronization running in under a minute. One command, no accounts, no server to provision.</p>
+  </div>
+
+  <section class="panel">
+    <h2>Quick install (recommended)</h2>
+    <pre><code># system-wide install
+curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | sudo bash
+
+# user-only install (no sudo)
+curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | bash -s -- --user</code></pre>
+    <p>The installer downloads prebuilt binaries for your platform and handles service stop/restart during upgrades.</p>
   </section>
+
   <section class="panel">
     <h2>Prerequisites</h2>
     <ul>
-      <li>Go 1.24+ (only for source builds)</li>
-      <li>SSH client for <code>trusted-owner-ssh</code> mode</li>
-      <li>mDNS support: Avahi on Linux, Bonjour on macOS, relay/workaround in WSL2</li>
+      <li><strong>Go 1.24+</strong> — only needed if building from source</li>
+      <li><strong>SSH client</strong> — for <code>trusted-owner-ssh</code> mode (installed by default on most systems)</li>
+      <li><strong>mDNS support</strong> — Avahi on Linux, Bonjour on macOS (built-in), relay in WSL2</li>
     </ul>
   </section>
-  <section class="panel">
-    <h2>Quick install (recommended)</h2>
-    <pre><code># system install
-curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | sudo bash
 
-# user install
-curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | bash -s -- --user</code></pre>
-    <p>Installer can download prebuilt releases and handles service stop/restart during upgrade.</p>
-  </section>
   <section class="panel">
     <h2>Build from source</h2>
     <pre><code>git clone https://github.com/championswimmer/env.sync.local.git
 cd env.sync.local
 make build
 make test
-sudo make install  # or make install-user</code></pre>
+sudo make install        # system-wide
+# or: make install-user  # user-only</code></pre>
   </section>
+
   <section class="panel">
     <h2>Platform notes</h2>
     <h3>Linux</h3>
     <pre><code>sudo apt-get install -y avahi-daemon avahi-utils</code></pre>
+    <p>Avahi provides mDNS peer discovery. Most desktop Linux distributions include it by default.</p>
     <h3>macOS</h3>
-    <p>Bonjour is built-in. Service management uses <code>launchd</code>.</p>
+    <p>Bonjour is built-in — no extra packages needed. Service management uses <code>launchd</code>.</p>
     <h3>Windows (WSL2)</h3>
-    <p>Prefer running on Windows host, or configure Avahi reflector in WSL2.</p>
+    <p>Run inside WSL2 or configure an Avahi reflector. Native Windows is not supported yet.</p>
   </section>
+
   <section class="panel">
-    <h2>Post-install setup and verification</h2>
-    <pre><code>env-sync --version
-env-sync mode get
+    <h2>Post-install setup</h2>
+    <pre><code># verify installation
+env-sync --version
+
+# initialize and start syncing
 env-sync init
 env-sync status
 env-sync discover
+
+# optional: set up automatic sync
 env-sync cron --install</code></pre>
   </section>
+
   <section class="panel">
-    <h2>Upgrade / uninstall</h2>
-    <pre><code># upgrade
+    <h2>Upgrade &amp; uninstall</h2>
+    <pre><code># upgrade — re-run the installer
 sudo ./install.sh
 
 # uninstall
@@ -72,6 +90,39 @@ env-sync service uninstall
 rm -rf ~/.config/env-sync
 sudo rm -f /usr/local/bin/env-sync</code></pre>
   </section>
+
+  <section class="cta-banner">
+    <h2>Installed? Start syncing.</h2>
+    <p>Check out the usage guide to learn how to add secrets, manage peers, and automate sync.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a class="btn btn-primary" href="../usage">Usage guide →</a>
+      <a class="btn btn-secondary" href="../modes">Explore modes</a>
+    </div>
+  </section>
 </main>
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">env-sync</div>
+      <p>Distributed .env sync for local networks.</p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+    </div>
+    <div class="footer-links">
+      <div>
+        <h4>Product</h4>
+        <a href="../installation">Installation</a>
+        <a href="../usage">Usage</a>
+        <a href="../modes">Modes</a>
+        <a href="../security">Security</a>
+      </div>
+      <div>
+        <h4>Compare</h4>
+        <a href="../comparisons/vault-vs-envsync">vs Vault</a>
+        <a href="../comparisons/infisical-vs-envsync">vs Infisical</a>
+        <a href="../comparisons/doppler-vs-envsync">vs Doppler</a>
+      </div>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

@@ -3,9 +3,21 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>env-sync | Distributed secrets sync for local networks</title>
-  <meta name="description" content="env-sync is a distributed secrets sync tool with three security modes: trusted-owner-ssh, secure-peer, and dev-plaintext-http." />
+  <title>env-sync | Sync .env secrets across machines — no server needed</title>
+  <meta name="description" content="env-sync is a peer-to-peer .env secrets synchronization tool for local networks. Auto-discover peers with mDNS, sync over SSH or mTLS, and keep every machine in sync — no central server required." />
   <link rel="canonical" href="https://envsync.arnav.tech/" />
+  <meta property="og:title" content="env-sync | Sync .env secrets across machines — no server needed" />
+  <meta property="og:description" content="Peer-to-peer .env secrets synchronization for local networks. Auto-discover peers with mDNS, sync over SSH or mTLS, keep every machine in sync." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://envsync.arnav.tech/" />
+  <meta property="og:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta property="og:site_name" content="env-sync" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="env-sync | Sync .env secrets across machines — no server needed" />
+  <meta name="twitter:description" content="Peer-to-peer .env secrets synchronization for local networks. Auto-discover peers, sync over SSH or mTLS, no central server required." />
+  <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="keywords" content="env sync, dotenv sync, secrets management, peer-to-peer, local network, mDNS, SSH, mTLS, AGE encryption, open source" />
+  <meta name="author" content="env-sync contributors" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -19,88 +31,200 @@
       <li><a href="./security">Security</a></li>
       <li><a href="./comparisons">Comparisons</a></li>
     </ul></nav>
+    <a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a>
   </div>
 </header>
 <main>
+  <!-- Hero -->
   <section class="hero">
     <div>
-      <h1>Distributed .env sync across local peers</h1>
-      <p>env-sync is a peer-to-peer secrets synchronization tool for local networks. No master server, automatic mDNS discovery, and explicit security models for different trust boundaries.</p>
+      <h1>Stop copying <span class="highlight">.env</span> files<br/>between machines</h1>
+      <p>env-sync keeps secrets in sync across every machine on your local network — automatically. No central server, no cloud dependency, no manual copy-paste.</p>
       <p>
-        <span class="badge">Go 1.24+</span>
-        <span class="badge">mDNS discovery</span>
-        <span class="badge">SSH / HTTPS+mTLS</span>
-        <span class="badge">AGE encryption</span>
+        <span class="badge">Open Source</span>
+        <span class="badge">mDNS Auto-Discovery</span>
+        <span class="badge">SSH &amp; mTLS Transport</span>
+        <span class="badge">AGE Encryption</span>
       </p>
       <div class="cta-row">
-        <a class="btn btn-primary" href="./installation">Get started</a>
-        <a class="btn btn-secondary" href="./modes">Explore modes</a>
+        <a class="btn btn-primary" href="./installation">Get started — it's free</a>
+        <a class="btn btn-secondary" href="https://github.com/championswimmer/env.sync.local">View on GitHub</a>
       </div>
-      <pre><code># install
+    </div>
+    <img src="./assets/cover.png" alt="env-sync peer-to-peer secrets synchronization across local machines" />
+  </section>
+
+  <!-- Install snippet -->
+  <section class="panel" style="max-width:720px;margin:0 auto 2.5rem;">
+    <pre><code># install in 10 seconds
 curl -fsSL https://raw.githubusercontent.com/championswimmer/env.sync.local/main/install.sh | bash -s -- --user
 
-# initialize and sync
+# start syncing
 env-sync init
 env-sync add OPENAI_API_KEY="sk-..."
 env-sync sync</code></pre>
-    </div>
-    <img src="./assets/cover.png" alt="env-sync network sync dashboard cover image" />
   </section>
 
+  <!-- Trust bar -->
+  <div class="trust-bar">
+    <span>🔒 End-to-end encrypted</span>
+    <span>🖥️ Linux, macOS &amp; WSL2</span>
+    <span>⚡ Written in Go</span>
+    <span>📡 Zero-config discovery</span>
+    <span>🆓 100% open source</span>
+  </div>
+
+  <!-- How it works -->
+  <div class="section-heading">
+    <h2>Up and running in 3 steps</h2>
+    <p>No accounts to create, no servers to manage, no cloud services to configure.</p>
+  </div>
+  <div class="steps">
+    <article class="panel step">
+      <h3>Install</h3>
+      <p>One-liner install on every machine. Works on Linux, macOS, and WSL2.</p>
+    </article>
+    <article class="panel step">
+      <h3>Initialize</h3>
+      <p>Run <code>env-sync init</code> to set up keys and choose your security mode.</p>
+    </article>
+    <article class="panel step">
+      <h3>Sync</h3>
+      <p>Peers discover each other via mDNS. Secrets merge automatically with backups.</p>
+    </article>
+  </div>
+
+  <!-- Why env-sync -->
+  <div class="section-heading">
+    <h2>Built for teams that work offline-first</h2>
+    <p>Unlike cloud-based secret managers, env-sync works entirely on your local network — even without an internet connection.</p>
+  </div>
+  <div class="features">
+    <article class="panel feature">
+      <div class="icon">🔍</div>
+      <h3>Auto-discovery with mDNS</h3>
+      <p>Machines find each other automatically using Avahi or Bonjour. No manual IP configuration needed.</p>
+    </article>
+    <article class="panel feature">
+      <div class="icon">🔐</div>
+      <h3>Three security modes</h3>
+      <p>From zero-config SSH for personal devices to mTLS + AGE encryption for cross-team collaboration.</p>
+    </article>
+    <article class="panel feature">
+      <div class="icon">🔄</div>
+      <h3>Smart merge &amp; backup</h3>
+      <p>Per-key timestamps prevent data loss. Automatic backups before every write — keeps last 5 versions.</p>
+    </article>
+    <article class="panel feature">
+      <div class="icon">⚡</div>
+      <h3>Lightweight &amp; fast</h3>
+      <p>Single Go binary. No runtime dependencies, no background database, no Docker required.</p>
+    </article>
+    <article class="panel feature">
+      <div class="icon">🕐</div>
+      <h3>Sync on autopilot</h3>
+      <p>Cron-based sync every 30 minutes, shell hook on startup, or manual trigger — your choice.</p>
+    </article>
+    <article class="panel feature">
+      <div class="icon">👥</div>
+      <h3>Peer management</h3>
+      <p>Invite, approve, and revoke peers with signed membership events that propagate automatically.</p>
+    </article>
+  </div>
+
+  <!-- Mode comparison table -->
+  <div class="section-heading">
+    <h2>Choose your security model</h2>
+    <p>env-sync gives you explicit control over trust boundaries. Pick the mode that fits your team.</p>
+  </div>
   <section class="panel">
-    <h2>Three modes, clear trust models</h2>
     <table>
       <thead><tr><th>Mode</th><th>Storage</th><th>Transport</th><th>Best for</th></tr></thead>
       <tbody>
-        <tr><td><strong>trusted-owner-ssh</strong> (default)</td><td>Plaintext (optional AGE)</td><td>SCP/SSH</td><td>All machines belong to the same owner</td></tr>
-        <tr><td><strong>secure-peer</strong></td><td>AGE encrypted (mandatory)</td><td>HTTPS + mTLS</td><td>Cross-owner collaboration without shell access</td></tr>
-        <tr><td><strong>dev-plaintext-http</strong></td><td>Plaintext</td><td>HTTP</td><td>Local debugging only</td></tr>
+        <tr><td><strong>trusted-owner-ssh</strong> (default)</td><td>Plaintext (optional AGE)</td><td>SCP / SSH</td><td>All machines belong to you — your laptop, desktop, NUC, server</td></tr>
+        <tr><td><strong>secure-peer</strong></td><td>AGE encrypted (mandatory)</td><td>HTTPS + mTLS</td><td>Multiple people sharing secrets without giving each other shell access</td></tr>
+        <tr><td><strong>dev-plaintext-http</strong></td><td>Plaintext</td><td>HTTP</td><td>Quick local debugging only — not for real secrets</td></tr>
       </tbody>
     </table>
+    <div style="text-align:center;margin-top:1rem;">
+      <a class="btn btn-secondary" href="./modes">Learn about each mode →</a>
+    </div>
   </section>
 
-  <section class="grid">
-    <article class="panel">
-      <h3>Architecture summary</h3>
-      <ul>
-        <li>Distributed and eventually consistent: shell startup, cron, or manual sync.</li>
-        <li>mDNS discovery on local networks (Avahi/Bonjour).</li>
-        <li>Backup before overwrite (keeps last 5 copies).</li>
-        <li>Mode-aware sync orchestration in Go.</li>
-      </ul>
+  <!-- Comparison callout -->
+  <div class="section-heading">
+    <h2>How does env-sync compare?</h2>
+    <p>env-sync fills the gap that centralized tools leave open — secrets on local machines that drift apart.</p>
+  </div>
+  <div class="grid">
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./comparisons/vault-vs-envsync">HashiCorp Vault</a></h2>
+      <p>Enterprise secrets platform vs lightweight peer sync.</p>
     </article>
-    <article class="panel">
-      <h3>Core workflows</h3>
-      <ul>
-        <li><strong>Trusted-owner:</strong> discover peers → SCP/SSH fetch → compare → merge → save.</li>
-        <li><strong>Secure-peer:</strong> discover → mTLS auth → authorization check → decrypt/merge → re-encrypt to recipients.</li>
-        <li><strong>Peer lifecycle:</strong> invite → request-access → approve/revoke → signed membership propagation.</li>
-      </ul>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./comparisons/infisical-vs-envsync">Infisical</a></h2>
+      <p>Open-source secrets platform vs decentralized LAN mesh.</p>
     </article>
-    <article class="panel">
-      <h3>Documentation map</h3>
-      <ul>
-        <li><a href="./installation">Installation guide</a> (Linux/macOS/WSL2, upgrades, uninstall).</li>
-        <li><a href="./usage">Usage guide</a> (mode, peer, secret, sync, service, cron, restore).</li>
-        <li><a href="./modes">Mode differences</a> and operational implications.</li>
-        <li><a href="./security">Security details</a>, threat model, and trust boundaries.</li>
-      </ul>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./comparisons/doppler-vs-envsync">Doppler</a></h2>
+      <p>Cloud secrets operations vs offline-first sync.</p>
     </article>
-  </section>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./comparisons/dotenvx-vs-envsync">dotenvx</a></h2>
+      <p>Encrypted dotenv runtime injection vs peer synchronization.</p>
+    </article>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./comparisons/sops-vs-envsync">SOPS</a></h2>
+      <p>Git-native encrypted files vs always-on machine sync.</p>
+    </article>
+  </div>
 
-  <section class="panel">
-    <h2>Project internals (v3.0)</h2>
-    <p>Major Go packages include mode management, sync orchestration, SSH and HTTPS transports, AGE crypto, peer registry, trust store, signed membership events, metadata, backups, and CLI command routing.</p>
-    <pre><code>src/internal/
-  cli/ mode/ sync/ discovery/ crypto/age/
-  transport/ssh/ transport/https/
-  peers/ peers/trust/ membership/
-  metadata/ secrets/ backup/ keys/ cron/</code></pre>
+  <!-- Bottom CTA -->
+  <section class="cta-banner">
+    <h2>Ready to stop sharing .env files over Slack?</h2>
+    <p>Get peer-to-peer secret sync running in under a minute. Open source, self-hosted, no accounts needed.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a class="btn btn-primary" href="./installation">Install env-sync</a>
+      <a class="btn btn-secondary" href="./usage">Read the usage guide</a>
+    </div>
   </section>
-
-  <footer>
-    Source docs: README.md, AGENTS.md, docs/INSTALLATION.md, docs/USAGE.md, docs/SECURITY-MODES.md.
-  </footer>
 </main>
+
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">env-sync</div>
+      <p>Distributed .env sync for local networks.</p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+    </div>
+    <div class="footer-links">
+      <div>
+        <h4>Product</h4>
+        <a href="./installation">Installation</a>
+        <a href="./usage">Usage</a>
+        <a href="./modes">Modes</a>
+        <a href="./security">Security</a>
+      </div>
+      <div>
+        <h4>Compare</h4>
+        <a href="./comparisons/vault-vs-envsync">vs Vault</a>
+        <a href="./comparisons/infisical-vs-envsync">vs Infisical</a>
+        <a href="./comparisons/doppler-vs-envsync">vs Doppler</a>
+        <a href="./comparisons/dotenvx-vs-envsync">vs dotenvx</a>
+        <a href="./comparisons/sops-vs-envsync">vs SOPS</a>
+      </div>
+      <div>
+        <h4>Resources</h4>
+        <a href="https://github.com/championswimmer/env.sync.local">Source code</a>
+        <a href="https://github.com/championswimmer/env.sync.local/issues">Report an issue</a>
+      </div>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

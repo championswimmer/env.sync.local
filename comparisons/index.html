@@ -4,29 +4,109 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Comparisons | env-sync vs alternatives</title>
-  <meta name="description" content="Compare env-sync with dotenvx, SOPS, HashiCorp Vault, Infisical, and Doppler." />
+  <meta name="description" content="Compare env-sync with dotenvx, SOPS, HashiCorp Vault, Infisical, and Doppler — see where peer-to-peer LAN sync fits in your stack." />
   <link rel="canonical" href="https://envsync.arnav.tech/comparisons" />
+  <meta property="og:title" content="env-sync vs alternatives | Vault, Infisical, Doppler, dotenvx, SOPS" />
+  <meta property="og:description" content="See how env-sync compares to HashiCorp Vault, Infisical, Doppler, dotenvx, and SOPS. Peer-to-peer LAN sync vs centralized secrets platforms." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://envsync.arnav.tech/comparisons" />
+  <meta property="og:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="env-sync vs alternatives | Vault, Infisical, Doppler, dotenvx, SOPS" />
+  <meta name="twitter:description" content="See how env-sync compares to HashiCorp Vault, Infisical, Doppler, dotenvx, and SOPS for secrets management." />
+  <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="keywords" content="env-sync comparison, Vault alternative, Infisical alternative, Doppler alternative, dotenvx alternative, SOPS alternative, secrets management comparison" />
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="./">Comparisons</a></li></ul></nav></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="./">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
 <main>
-  <h1>Competitor research and comparisons</h1>
-  <section class="hero-media">
-    <div class="panel">
-      <h2>Built for the edge cases centralized tools skip</h2>
-      <p>env-sync is optimized for LAN-first teams that want peer-to-peer consistency, explicit trust boundaries, and lightweight operations.</p>
-      <img src="../assets/cover.png" alt="env-sync comparisons preview" />
+  <div class="subpage-hero">
+    <h1>How env-sync compares</h1>
+    <p>Most secrets tools are built for cloud-first, centralized workflows. env-sync fills the gap — peer-to-peer .env sync on local networks with explicit trust boundaries and zero cloud dependency.</p>
+  </div>
+
+  <section class="panel">
+    <h2>The landscape at a glance</h2>
+    <table>
+      <thead><tr><th>Tool</th><th>Architecture</th><th>Primary use case</th><th>LAN / offline</th><th>Pricing</th></tr></thead>
+      <tbody>
+        <tr><td><strong>env-sync</strong></td><td>Peer-to-peer</td><td>Sync .env secrets across local machines</td><td>✅ Built for it</td><td>Free &amp; open source</td></tr>
+        <tr><td><a href="./dotenvx-vs-envsync">dotenvx</a></td><td>CLI per-app</td><td>Encrypted .env files &amp; runtime injection</td><td>Partial — local files only</td><td>Free &amp; open source</td></tr>
+        <tr><td><a href="./sops-vs-envsync">SOPS</a></td><td>CLI / file-based</td><td>Encrypted config files in Git / IaC</td><td>Partial — local files only</td><td>Free &amp; open source</td></tr>
+        <tr><td><a href="./vault-vs-envsync">HashiCorp Vault</a></td><td>Centralized server</td><td>Enterprise secrets, dynamic creds, PKI</td><td>❌ Needs server</td><td>OSS free / Enterprise paid</td></tr>
+        <tr><td><a href="./infisical-vs-envsync">Infisical</a></td><td>Centralized platform</td><td>Secrets management, RBAC, PKI</td><td>❌ Needs server</td><td>OSS free / Cloud paid</td></tr>
+        <tr><td><a href="./doppler-vs-envsync">Doppler</a></td><td>Cloud SaaS</td><td>Centralized config &amp; secret delivery</td><td>❌ Cloud-dependent</td><td>Free tier / Paid plans</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <div class="section-heading">
+    <h2>Detailed comparisons</h2>
+    <p>Click through for in-depth feature breakdowns, use-case analysis, and guidance on when each tool is the better fit.</p>
+  </div>
+  <div class="grid">
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./dotenvx-vs-envsync">dotenvx vs env-sync</a></h2>
+      <p>Encrypted dotenv files with runtime injection compared to peer-to-peer LAN synchronization with mDNS discovery.</p>
+    </article>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./sops-vs-envsync">SOPS vs env-sync</a></h2>
+      <p>Git-native encrypted file workflows with KMS/AGE/PGP backends versus always-on local machine sync with merge behavior.</p>
+    </article>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./vault-vs-envsync">HashiCorp Vault vs env-sync</a></h2>
+      <p>Enterprise central secrets platform with dynamic credentials versus lightweight decentralized sync — no server needed.</p>
+    </article>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./infisical-vs-envsync">Infisical vs env-sync</a></h2>
+      <p>Open-source secrets platform with RBAC, PKI, and dynamic secrets versus local-first peer mesh for .env files.</p>
+    </article>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><a href="./doppler-vs-envsync">Doppler vs env-sync</a></h2>
+      <p>Cloud-centric centralized secrets operations with integrations versus offline/LAN-first synchronization with explicit trust modes.</p>
+    </article>
+  </div>
+
+  <section class="cta-banner">
+    <h2>Ready to try env-sync?</h2>
+    <p>Install in one command. No accounts, no cloud, no server. Just peer-to-peer .env sync that works.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a class="btn btn-primary" href="../installation">Install env-sync</a>
+      <a class="btn btn-secondary" href="https://github.com/championswimmer/env.sync.local">View on GitHub</a>
     </div>
   </section>
-  <p>Research refreshed using current official product docs and repositories (March 2026). env-sync is intentionally designed as a <strong>local-network, peer-to-peer .env sync</strong> tool with explicit trust modes.</p>
-  <div class="grid">
-    <article class="panel"><h2><a href="./dotenvx-vs-envsync">dotenvx vs env-sync</a></h2><p>Encrypted dotenv + runtime injection compared to LAN peer synchronization.</p></article>
-    <article class="panel"><h2><a href="./sops-vs-envsync">SOPS vs env-sync</a></h2><p>Encrypted file workflows with KMS/age/PGP versus always-on local machine sync.</p></article>
-    <article class="panel"><h2><a href="./vault-vs-envsync">HashiCorp Vault vs env-sync</a></h2><p>Enterprise central secrets platform compared with lightweight decentralized sync.</p></article>
-    <article class="panel"><h2><a href="./infisical-vs-envsync">Infisical vs env-sync</a></h2><p>Open-source secrets platform and governance stack versus local-first peer mesh.</p></article>
-    <article class="panel"><h2><a href="./doppler-vs-envsync">Doppler vs env-sync</a></h2><p>Cloud-centric centralized secrets operations versus offline/LAN-first synchronization.</p></article>
-  </div>
 </main>
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">env-sync</div>
+      <p>Distributed .env sync for local networks.</p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+    </div>
+    <div class="footer-links">
+      <div>
+        <h4>Product</h4>
+        <a href="../installation">Installation</a>
+        <a href="../usage">Usage</a>
+        <a href="../modes">Modes</a>
+        <a href="../security">Security</a>
+      </div>
+      <div>
+        <h4>Compare</h4>
+        <a href="./vault-vs-envsync">vs Vault</a>
+        <a href="./infisical-vs-envsync">vs Infisical</a>
+        <a href="./doppler-vs-envsync">vs Doppler</a>
+        <a href="./dotenvx-vs-envsync">vs dotenvx</a>
+        <a href="./sops-vs-envsync">vs SOPS</a>
+      </div>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

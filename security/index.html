@@ -3,30 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Security guide | env-sync</title>
-  <meta name="description" content="Security architecture of env-sync: trust boundaries, mTLS, AGE, certificate pinning, and signed membership events." />
+  <title>Security architecture | env-sync</title>
+  <meta name="description" content="Security architecture of env-sync: trust boundaries, mTLS, AGE encryption, certificate pinning, signed membership events, and threat model." />
   <link rel="canonical" href="https://envsync.arnav.tech/security" />
+  <meta property="og:title" content="Security architecture | env-sync" />
+  <meta property="og:description" content="Defense-in-depth security: mTLS, AGE encryption, certificate pinning, signed membership events, and threat model for peer-to-peer secrets sync." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://envsync.arnav.tech/security" />
+  <meta property="og:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Security architecture | env-sync" />
+  <meta name="twitter:description" content="Defense-in-depth: mTLS, AGE encryption, certificate pinning, signed membership events for peer-to-peer secrets sync." />
+  <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="keywords" content="env-sync security, mTLS, AGE encryption, certificate pinning, threat model, peer-to-peer security, secrets encryption" />
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
 <main>
-  <h1>Security of different modes</h1>
-  <section class="hero-media">
-    <div class="panel">
-      <h2>Defense-in-depth for local collaboration</h2>
-      <p>Use SSH trust for same-owner fleets or secure-peer with AGE + mTLS + approvals when multiple owners need controlled sharing.</p>
-      <img src="../assets/cover.png" alt="env-sync security preview" />
-    </div>
-  </section>
+  <div class="subpage-hero">
+    <h1>Security architecture</h1>
+    <p>env-sync uses defense-in-depth across three explicit security modes. No implicit trust — you choose the model that fits your threat profile.</p>
+  </div>
+
   <section class="panel">
     <h2>Security baseline by mode</h2>
     <table>
-      <thead><tr><th>Mode</th><th>At-rest</th><th>In-transit</th><th>Peer auth</th><th>Risk summary</th></tr></thead>
+      <thead><tr><th>Dimension</th><th>dev-plaintext-http</th><th>trusted-owner-ssh</th><th>secure-peer</th></tr></thead>
       <tbody>
-        <tr><td>dev-plaintext-http</td><td>None</td><td>None</td><td>None</td><td>Only for local debugging</td></tr>
-        <tr><td>trusted-owner-ssh</td><td>Plaintext default (optional AGE)</td><td>SSH encryption</td><td>SSH keys</td><td>Strong when all hosts are equally trusted</td></tr>
-        <tr><td>secure-peer</td><td>AGE encrypted</td><td>HTTPS + mTLS</td><td>Cert-based mutual auth + approval</td><td>Best for cross-owner trust boundaries</td></tr>
+        <tr><td><strong>Encryption at rest</strong></td><td>None</td><td>Plaintext default (optional AGE)</td><td>AGE encrypted (mandatory)</td></tr>
+        <tr><td><strong>Encryption in transit</strong></td><td>None</td><td>SSH encryption</td><td>HTTPS + mTLS (TLS 1.3)</td></tr>
+        <tr><td><strong>Peer authentication</strong></td><td>None</td><td>SSH keys</td><td>Mutual TLS certificates + approval</td></tr>
+        <tr><td><strong>Risk level</strong></td><td>Debug only — not for real secrets</td><td>Strong when all hosts are equally trusted</td><td>Strong for cross-owner boundaries</td></tr>
       </tbody>
     </table>
   </section>
@@ -34,37 +42,88 @@
   <section class="panel">
     <h2>Secure-peer trust model</h2>
     <ul>
-      <li>No global root CA shipped; trust is deployment-local with pinned certificates.</li>
-      <li>Peer registry tracks pending/approved/revoked states.</li>
-      <li>On approve/revoke, signed membership events replicate across peers.</li>
-      <li>Replay protection uses monotonic event IDs plus timestamp checks.</li>
+      <li><strong>No global root CA</strong> — trust is deployment-local with pinned certificates, not dependent on external certificate authorities.</li>
+      <li><strong>Peer registry</strong> — tracks pending, approved, and revoked states for every peer.</li>
+      <li><strong>Signed membership events</strong> — approve/revoke actions are cryptographically signed and replicated across all peers.</li>
+      <li><strong>Replay protection</strong> — monotonic event IDs and timestamp validation prevent event replay attacks.</li>
+      <li><strong>Offline catch-up</strong> — peers that were offline during membership changes receive signed events on next sync.</li>
     </ul>
   </section>
 
   <section class="panel">
-    <h2>Threat-model highlights</h2>
+    <h2>Threat model</h2>
     <h3>trusted-owner-ssh</h3>
     <ul>
-      <li>Strength: mature SSH transport security and operational simplicity.</li>
-      <li>Limitation: compromise of one fully trusted peer can impact others due to broad trust.</li>
+      <li><strong>Strength:</strong> Mature SSH transport security, operational simplicity, and wide ecosystem support.</li>
+      <li><strong>Trade-off:</strong> Broad trust — compromise of one peer can impact others. All peers have equivalent access.</li>
+      <li><strong>Mitigation:</strong> Enable optional AGE encryption for defense-in-depth. Rotate SSH keys regularly.</li>
     </ul>
     <h3>secure-peer</h3>
     <ul>
-      <li>Strength: explicit authorization and mandatory encryption at rest.</li>
-      <li>Strength: mTLS avoids shell access sharing, reducing blast radius vs SSH trust mesh.</li>
-      <li>Operational requirement: invitation/approval workflow and identity material management.</li>
+      <li><strong>Strength:</strong> Explicit authorization required. Mandatory encryption at rest. No shell access shared between peers.</li>
+      <li><strong>Strength:</strong> mTLS reduces blast radius compared to SSH trust mesh — peers authenticate without system-level access.</li>
+      <li><strong>Trade-off:</strong> Higher operational overhead — invitation/approval workflow and identity material management required.</li>
+      <li><strong>Mitigation:</strong> Regular peer audits. Revoke compromised peers immediately — revocation propagates via signed events.</li>
     </ul>
+  </section>
+
+  <section class="panel">
+    <h2>Cryptographic primitives</h2>
+    <table>
+      <thead><tr><th>Component</th><th>Algorithm</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td>AGE encryption</td><td>X25519 + ChaCha20-Poly1305</td><td>At-rest encryption of secret values</td></tr>
+        <tr><td>mTLS certificates</td><td>TLS 1.3 (X.509)</td><td>In-transit encryption and peer authentication</td></tr>
+        <tr><td>Membership events</td><td>Signed with transport key</td><td>Cryptographic proof of peer approval/revocation</td></tr>
+        <tr><td>SSH transport</td><td>Ed25519 / RSA keys</td><td>Encrypted file transfer in trusted-owner mode</td></tr>
+      </tbody>
+    </table>
   </section>
 
   <section class="panel">
     <h2>Operational security checklist</h2>
     <ul>
-      <li>Keep file permissions strict (<code>600</code> for secrets).</li>
-      <li>Avoid logging secret values (env-sync logging keeps this boundary).</li>
-      <li>Regularly audit approved peers in secure-peer mode.</li>
-      <li>Use backups and key lifecycle controls during membership changes.</li>
+      <li>✅ Keep file permissions strict — <code>600</code> for secrets files.</li>
+      <li>✅ Never log secret values — env-sync's logging respects this boundary.</li>
+      <li>✅ Audit approved peers regularly in secure-peer mode.</li>
+      <li>✅ Use backups and key lifecycle controls during membership changes.</li>
+      <li>✅ Enable AGE encryption in trusted-owner mode for defense-in-depth.</li>
+      <li>✅ Revoke and rotate keys for any compromised peer immediately.</li>
     </ul>
   </section>
+
+  <section class="cta-banner">
+    <h2>See how env-sync compares to centralized tools</h2>
+    <p>Understand the trade-offs between peer-to-peer sync and cloud-hosted secrets managers.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a class="btn btn-primary" href="../comparisons">View comparisons</a>
+      <a class="btn btn-secondary" href="../modes">Mode details</a>
+    </div>
+  </section>
 </main>
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">env-sync</div>
+      <p>Distributed .env sync for local networks.</p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+    </div>
+    <div class="footer-links">
+      <div>
+        <h4>Product</h4>
+        <a href="../installation">Installation</a>
+        <a href="../usage">Usage</a>
+        <a href="../modes">Modes</a>
+        <a href="../security">Security</a>
+      </div>
+      <div>
+        <h4>Compare</h4>
+        <a href="../comparisons/vault-vs-envsync">vs Vault</a>
+        <a href="../comparisons/infisical-vs-envsync">vs Infisical</a>
+        <a href="../comparisons/doppler-vs-envsync">vs Doppler</a>
+      </div>
+    </div>
+  </div>
+</footer>
 </body>
 </html>

@@ -3,70 +3,130 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mode differences | env-sync</title>
-  <meta name="description" content="Compare env-sync operation modes: dev-plaintext-http, trusted-owner-ssh, and secure-peer." />
+  <title>Security modes explained | env-sync</title>
+  <meta name="description" content="Compare env-sync's three security modes: trusted-owner-ssh for personal fleets, secure-peer for cross-team collaboration, and dev-plaintext-http for debugging." />
   <link rel="canonical" href="https://envsync.arnav.tech/modes" />
+  <meta property="og:title" content="Security modes explained | env-sync" />
+  <meta property="og:description" content="Compare env-sync's three security modes: trusted-owner-ssh for personal fleets, secure-peer for cross-team collaboration, dev-plaintext-http for debugging." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://envsync.arnav.tech/modes" />
+  <meta property="og:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Security modes explained | env-sync" />
+  <meta name="twitter:description" content="Three security modes for different trust boundaries: SSH, mTLS+AGE, or plaintext debug. Pick the one that fits." />
+  <meta name="twitter:image" content="https://envsync.arnav.tech/assets/cover.png" />
+  <meta name="keywords" content="env-sync modes, SSH sync, mTLS secrets, AGE encryption, trusted-owner, secure-peer, security modes" />
   <link rel="stylesheet" href="../styles.css" />
 </head>
 <body>
-<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav></div></header>
+<header><div class="nav"><a class="brand" href="../">env-sync</a><nav><ul><li><a href="../installation">Installation</a></li><li><a href="../usage">Usage</a></li><li><a href="../modes">Modes</a></li><li><a href="../security">Security</a></li><li><a href="../comparisons">Comparisons</a></li></ul></nav><a class="github-link" href="https://github.com/championswimmer/env.sync.local">★ GitHub</a></div></header>
 <main>
-  <h1>Differences in modes</h1>
-  <section class="hero-media">
-    <div class="panel">
-      <h2>Security models you can choose explicitly</h2>
-      <p>Move from zero-touch trusted-owner workflows to explicit approval with secure-peer mTLS, all within one CLI.</p>
-      <img src="../assets/cover.png" alt="env-sync modes preview" />
-    </div>
-  </section>
+  <div class="subpage-hero">
+    <h1>Three modes, one CLI</h1>
+    <p>env-sync gives you explicit control over how secrets are stored, transported, and who gets access. Pick the security model that fits your scenario.</p>
+  </div>
+
   <section class="panel">
+    <h2>Mode comparison at a glance</h2>
     <table>
-      <thead><tr><th>Mode</th><th>Storage</th><th>Transport</th><th>Onboarding</th><th>Authorization model</th></tr></thead>
+      <thead><tr><th>Dimension</th><th>dev-plaintext-http</th><th>trusted-owner-ssh</th><th>secure-peer</th></tr></thead>
       <tbody>
-        <tr><td>dev-plaintext-http</td><td>Plaintext</td><td>HTTP</td><td>Open</td><td>None</td></tr>
-        <tr><td>trusted-owner-ssh (default)</td><td>Plaintext by default, optional AGE</td><td>SCP/SSH</td><td>Zero-touch new machine if SSH access exists</td><td>Implicit via SSH trust</td></tr>
-        <tr><td>secure-peer</td><td>AGE encrypted mandatory</td><td>HTTPS + mTLS</td><td>Invitation + approval required</td><td>Explicit approved/revoked states</td></tr>
+        <tr><td><strong>Storage</strong></td><td>Plaintext</td><td>Plaintext (optional AGE)</td><td>AGE encrypted (mandatory)</td></tr>
+        <tr><td><strong>Transport</strong></td><td>HTTP</td><td>SCP / SSH</td><td>HTTPS + mTLS</td></tr>
+        <tr><td><strong>Onboarding</strong></td><td>Open — any peer on the network</td><td>Zero-touch if SSH access exists</td><td>Invitation + explicit approval</td></tr>
+        <tr><td><strong>Authorization</strong></td><td>None</td><td>Implicit via SSH trust</td><td>Explicit approved / revoked states</td></tr>
+        <tr><td><strong>Best for</strong></td><td>Local debugging only</td><td>All your own machines</td><td>Multiple owners sharing secrets</td></tr>
       </tbody>
     </table>
   </section>
 
   <section class="panel">
     <h2>Mode A: dev-plaintext-http</h2>
-    <p>Debug-only mode. No encryption at rest, no transport protection, and no authentication.</p>
+    <p>Debug-only mode with <strong>no encryption</strong> at rest or in transit and <strong>no authentication</strong>. Use this exclusively for isolated local testing — never for real secrets.</p>
+    <pre><code>env-sync mode set dev-plaintext-http</code></pre>
   </section>
+
   <section class="panel">
-    <h2>Mode B: trusted-owner-ssh</h2>
-    <p>Default mode for same-owner devices. SSH provides encrypted transport and authentication. Storage is plaintext by default because trust is already broad in this model; optional encryption can be enabled for defense-in-depth.</p>
-    <h3>Sync strategy</h3>
+    <h2>Mode B: trusted-owner-ssh <span class="badge">default</span></h2>
+    <p>Ideal when every machine belongs to you. SSH provides encrypted transport and authentication automatically. Storage is plaintext by default because trust is already broad in this model; optional AGE encryption can be enabled for defense-in-depth.</p>
+    <h3>How sync works</h3>
     <ol>
-      <li>Discover peers with mDNS and SSH reachability checks.</li>
-      <li>Fetch secrets via SCP/SSH.</li>
-      <li>Compare metadata versions/timestamps.</li>
-      <li>Merge and write local file (with backup).</li>
+      <li>Discover peers with mDNS, filter by SSH reachability.</li>
+      <li>Fetch secrets from peers via SCP/SSH.</li>
+      <li>Compare metadata versions and timestamps.</li>
+      <li>Merge changes and write locally with automatic backup.</li>
     </ol>
+    <pre><code>env-sync mode set trusted-owner-ssh</code></pre>
   </section>
+
   <section class="panel">
     <h2>Mode C: secure-peer</h2>
-    <p>Designed for cross-owner collaboration: no shell access needed between peers, mandatory AGE encryption, and mTLS-authenticated HTTPS transfer.</p>
-    <h3>Sync strategy</h3>
+    <p>Designed for cross-owner collaboration. No shell access is shared between peers — mTLS handles authentication and AGE handles encryption at rest. Access requires an explicit invitation and approval step.</p>
+    <h3>How sync works</h3>
     <ol>
       <li>Discover peers over mDNS.</li>
-      <li>Establish mTLS and verify authorization.</li>
-      <li>Fetch encrypted secrets and decrypt locally.</li>
-      <li>Merge using per-key timestamps.</li>
-      <li>Re-encrypt to all known recipients and save backup.</li>
+      <li>Establish mTLS connection and verify authorization.</li>
+      <li>Fetch encrypted secrets and decrypt locally with your AGE key.</li>
+      <li>Merge using per-key timestamps for granular conflict resolution.</li>
+      <li>Re-encrypt to all known recipients and save with backup.</li>
       <li>Replay signed membership events for offline catch-up.</li>
     </ol>
+    <pre><code>env-sync mode set secure-peer</code></pre>
   </section>
 
   <section class="panel">
     <h2>Choosing the right mode</h2>
-    <ul>
-      <li>Use <strong>trusted-owner-ssh</strong> for your own machines where SSH trust already exists.</li>
-      <li>Use <strong>secure-peer</strong> when different owners collaborate but should not share shell access.</li>
-      <li>Use <strong>dev-plaintext-http</strong> only in isolated local debugging contexts.</li>
-    </ul>
+    <div class="features" style="margin:1rem 0 0;">
+      <article class="panel feature">
+        <div class="icon">🏠</div>
+        <h3>Personal fleet</h3>
+        <p>Use <strong>trusted-owner-ssh</strong>. Your laptop, desktop, server, NUC — all behind SSH trust you already manage.</p>
+      </article>
+      <article class="panel feature">
+        <div class="icon">👥</div>
+        <h3>Team collaboration</h3>
+        <p>Use <strong>secure-peer</strong>. Team members get secrets without SSH access to each other's machines.</p>
+      </article>
+      <article class="panel feature">
+        <div class="icon">🔧</div>
+        <h3>Quick debugging</h3>
+        <p>Use <strong>dev-plaintext-http</strong>. Fast setup for throwaway testing — never store real credentials here.</p>
+      </article>
+    </div>
+  </section>
+
+  <section class="cta-banner">
+    <h2>Ready to get started?</h2>
+    <p>Install env-sync and initialize with your preferred security mode.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <a class="btn btn-primary" href="../installation">Install now</a>
+      <a class="btn btn-secondary" href="../security">Security deep-dive</a>
+    </div>
   </section>
 </main>
+<footer>
+  <div class="footer-inner">
+    <div>
+      <div class="footer-brand">env-sync</div>
+      <p>Distributed .env sync for local networks.</p>
+      <p>Open source · <a href="https://github.com/championswimmer/env.sync.local">GitHub</a></p>
+    </div>
+    <div class="footer-links">
+      <div>
+        <h4>Product</h4>
+        <a href="../installation">Installation</a>
+        <a href="../usage">Usage</a>
+        <a href="../modes">Modes</a>
+        <a href="../security">Security</a>
+      </div>
+      <div>
+        <h4>Compare</h4>
+        <a href="../comparisons/vault-vs-envsync">vs Vault</a>
+        <a href="../comparisons/infisical-vs-envsync">vs Infisical</a>
+        <a href="../comparisons/doppler-vs-envsync">vs Doppler</a>
+      </div>
+    </div>
+  </div>
+</footer>
 </body>
 </html>
