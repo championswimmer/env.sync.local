@@ -98,6 +98,14 @@ nav ul li.dropdown .dropdown-menu {
   z-index: 20;
   list-style: none;
 }
+nav ul li.dropdown .dropdown-menu::before {
+  content: "";
+  position: absolute;
+  top: -0.5rem;
+  left: 0;
+  right: 0;
+  height: 0.5rem;
+}
 nav ul li.dropdown .dropdown-menu li {
   margin: 0;
 }
