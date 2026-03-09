@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installation script for env-sync v2.0
+# Installation script for env-sync
 
 set -euo pipefail
 
@@ -11,10 +11,15 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 # Configuration
+ENV_SYNC_VERSION="3.0.1"
 USER_INSTALL=false
 INSTALL_PREFIX="/usr/local"
 BIN_DIR="$INSTALL_PREFIX/bin"
 ENV_SYNC_LOAD_LINE='eval "$(env-sync load --quiet 2>/dev/null)"'
+INSTALL_GUI=false
+INSTALL_CLI=true
+GUI_BUNDLE_NAME="env-sync.app"
+GUI_BINARY_NAME="env-sync-gui"
 
 # GitHub repository
 GITHUB_REPO="championswimmer/env.sync.local"
@@ -29,11 +34,28 @@ while [[ $# -gt 0 ]]; do
             BIN_DIR="$INSTALL_PREFIX/bin"
             shift
             ;;
+        --gui)
+            INSTALL_GUI=true
+            shift
+            ;;
+        --all)
+            INSTALL_GUI=true
+            INSTALL_CLI=true
+            shift
+            ;;
+        --gui-only)
+            INSTALL_GUI=true
+            INSTALL_CLI=false
+            shift
+            ;;
         --help)
             echo "Usage: install.sh [options]"
             echo "Options:"
-            echo "  --user    Install to ~/.local (no sudo required)"
-            echo "  --help    Show this help"
+            echo "  --user      Install to ~/.local (no sudo required)"
+            echo "  --gui       Also install the GUI application"
+            echo "  --gui-only  Install only the GUI application (not CLI)"
+            echo "  --all       Install both CLI and GUI"
+            echo "  --help      Show this help"
             echo ""
             echo "Installation modes:"
             echo "  - Local mode: Run from cloned repository (builds from source)"
@@ -110,35 +132,26 @@ detect_platform() {
     echo "${os}-${arch}"
 }
 
-# Download binary from GitHub releases
-download_binary() {
-    local platform="$1"
-    local binary_name="env-sync-${platform}"
-    local download_url="${GITHUB_RELEASES_URL}/${binary_name}"
+# Download artifact from GitHub releases
+download_artifact() {
+    local artifact_name="$1"
+    local download_url="${GITHUB_RELEASES_URL}/${artifact_name}"
 
-    # Add .exe extension for Windows
-    if [[ "$platform" == windows-* ]]; then
-        binary_name="${binary_name}.exe"
-        download_url="${download_url}.exe"
-    fi
+    echo "Downloading ${artifact_name} from ${download_url}..." >&2
 
-    echo "Downloading env-sync from ${download_url}..." >&2
-
-    # Create temporary directory for download
     local temp_dir
     temp_dir="$(mktemp -d)"
-    local temp_binary="${temp_dir}/env-sync"
+    local temp_path="${temp_dir}/${artifact_name}"
 
-    # Try curl first, then wget
     if command -v curl >/dev/null 2>&1; then
-        if ! curl -fsSL -o "$temp_binary" "$download_url"; then
-            echo -e "${RED}Failed to download binary from ${download_url}${NC}" >&2
+        if ! curl -fsSL -o "$temp_path" "$download_url"; then
+            echo -e "${RED}Failed to download artifact from ${download_url}${NC}" >&2
             rm -rf "$temp_dir"
             exit 1
         fi
     elif command -v wget >/dev/null 2>&1; then
-        if ! wget -q -O "$temp_binary" "$download_url"; then
-            echo -e "${RED}Failed to download binary from ${download_url}${NC}" >&2
+        if ! wget -q -O "$temp_path" "$download_url"; then
+            echo -e "${RED}Failed to download artifact from ${download_url}${NC}" >&2
             rm -rf "$temp_dir"
             exit 1
         fi
@@ -148,10 +161,21 @@ download_binary() {
         exit 1
     fi
 
-    echo "$temp_binary"
+    echo "$temp_path"
 }
 
-echo -e "${BLUE}Installing env-sync v2.0 (Go binary)...${NC}"
+download_binary() {
+    local platform="$1"
+    local artifact_name="env-sync-${platform}"
+
+    if [[ "$platform" == windows-* ]]; then
+        artifact_name="${artifact_name}.exe"
+    fi
+
+    download_artifact "$artifact_name"
+}
+
+echo -e "${BLUE}Installing env-sync v${ENV_SYNC_VERSION}...${NC}"
 
 # Detect OS
 OS=$(uname -s)
@@ -225,57 +249,282 @@ add_shell_integration() {
     echo "Added shell integration to ${target_file/$HOME/~}"
 }
 
-# Create directories
-echo "Creating directories..."
-mkdir -p "$BIN_DIR"
+configure_gui_paths() {
+    case "$OS" in
+        Darwin)
+            if [[ "$USER_INSTALL" == "true" ]]; then
+                GUI_INSTALL_DIR="$HOME/Applications"
+            else
+                GUI_INSTALL_DIR="/Applications"
+            fi
+            GUI_INSTALL_TARGET="$GUI_INSTALL_DIR/$GUI_BUNDLE_NAME"
+            ;;
+        Linux)
+            if [[ "$USER_INSTALL" == "true" ]]; then
+                GUI_INSTALL_DIR="$HOME/.local/lib/env-sync"
+                GUI_DESKTOP_DIR="$HOME/.local/share/applications"
+                GUI_ICON_DIR="$HOME/.local/share/icons/hicolor/512x512/apps"
+                GUI_LAUNCHER="$HOME/.local/bin/$GUI_BINARY_NAME"
+            else
+                GUI_INSTALL_DIR="/opt/env-sync"
+                GUI_DESKTOP_DIR="/usr/local/share/applications"
+                GUI_ICON_DIR="/usr/local/share/icons/hicolor/512x512/apps"
+                GUI_LAUNCHER="$BIN_DIR/$GUI_BINARY_NAME"
+            fi
+            GUI_INSTALL_TARGET="$GUI_INSTALL_DIR/$GUI_BINARY_NAME"
+            ;;
+        MINGW*|MSYS*|CYGWIN*)
+            GUI_INSTALL_DIR=""
+            GUI_INSTALL_TARGET=""
+            ;;
+    esac
+}
 
-# Install files
+write_linux_gui_desktop_file() {
+    local desktop_file="$1"
+    local exec_path="$2"
+    local icon_name="$3"
+
+    cat > "$desktop_file" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=env-sync
+Comment=Distributed secrets synchronization for local networks
+Exec=${exec_path}
+Icon=${icon_name}
+Terminal=false
+Categories=Utility;Development;
+Keywords=env;sync;secrets;
+StartupWMClass=env-sync-gui
+EOF
+}
+
+refresh_linux_desktop_cache() {
+    if command -v update-desktop-database >/dev/null 2>&1; then
+        update-desktop-database "$GUI_DESKTOP_DIR" >/dev/null 2>&1 || true
+    fi
+    if command -v gtk-update-icon-cache >/dev/null 2>&1; then
+        gtk-update-icon-cache -q "${GUI_ICON_DIR%/512x512/apps}" >/dev/null 2>&1 || true
+    fi
+}
+
+install_linux_gui_payload() {
+    local binary_source="$1"
+    local icon_source="$2"
+
+    mkdir -p "$GUI_INSTALL_DIR" "$GUI_DESKTOP_DIR" "$GUI_ICON_DIR" "$(dirname "$GUI_LAUNCHER")"
+    install -m 755 "$binary_source" "$GUI_INSTALL_TARGET"
+    install -m 644 "$icon_source" "$GUI_ICON_DIR/env-sync-gui.png"
+    ln -sf "$GUI_INSTALL_TARGET" "$GUI_LAUNCHER"
+    write_linux_gui_desktop_file "$GUI_DESKTOP_DIR/env-sync-gui.desktop" "$GUI_LAUNCHER" "env-sync-gui"
+    refresh_linux_desktop_cache
+    echo -e "${GREEN}✓ GUI application installed to ${GUI_INSTALL_DIR}${NC}"
+}
+
+create_macos_gui_bundle() {
+    local binary_source="$1"
+    local bundle_target="$2"
+    local contents_dir="$bundle_target/Contents"
+    local resources_dir="$contents_dir/Resources"
+    local icon_source="$SCRIPT_DIR/src/gui/build/bin/env-sync.app/Contents/Resources/iconfile.icns"
+
+    rm -rf "$bundle_target"
+    mkdir -p "$contents_dir/MacOS" "$resources_dir"
+    install -m 755 "$binary_source" "$contents_dir/MacOS/$GUI_BINARY_NAME"
+
+    if [[ -f "$icon_source" ]]; then
+        install -m 644 "$icon_source" "$resources_dir/iconfile.icns"
+    fi
+
+    cat > "$contents_dir/Info.plist" <<EOF
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleName</key>
+    <string>env-sync</string>
+    <key>CFBundleExecutable</key>
+    <string>${GUI_BINARY_NAME}</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.wails.env-sync</string>
+    <key>CFBundleVersion</key>
+    <string>${ENV_SYNC_VERSION}</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${ENV_SYNC_VERSION}</string>
+    <key>CFBundleGetInfoString</key>
+    <string>Distributed secrets synchronization for local networks</string>
+    <key>CFBundleIconFile</key>
+    <string>iconfile</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>10.13.0</string>
+    <key>NSHighResolutionCapable</key>
+    <string>true</string>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsLocalNetworking</key>
+      <true/>
+    </dict>
+  </dict>
+</plist>
+EOF
+}
+
+install_macos_gui_bundle() {
+    local bundle_source="$1"
+
+    mkdir -p "$GUI_INSTALL_DIR"
+    rm -rf "$GUI_INSTALL_TARGET"
+    ditto "$bundle_source" "$GUI_INSTALL_TARGET"
+    xattr -rc "$GUI_INSTALL_TARGET" >/dev/null 2>&1 || true
+    echo -e "${GREEN}✓ GUI application installed to ${GUI_INSTALL_TARGET}${NC}"
+}
+
+configure_gui_paths
+
+if [[ "$INSTALL_GUI" == "true" && "$OS" =~ ^(MINGW|MSYS|CYGWIN) ]]; then
+    echo -e "${RED}GUI installation via install.sh is not supported on Windows.${NC}"
+    echo "Download and run the Windows installer from GitHub Releases instead."
+    exit 1
+fi
+
+CLI_INSTALLED=false
+GUI_INSTALLED=false
+
+echo "Creating directories..."
+if [[ "$INSTALL_CLI" == "true" ]] || [[ "$INSTALL_GUI" == "true" && "$OS" == "Linux" && "$USER_INSTALL" == "false" ]]; then
+    mkdir -p "$BIN_DIR"
+fi
+
 echo "Installing files..."
 
-# Stop running service if it exists
 SERVICE_WAS_STOPPED=false
-# Check if env-sync is already installed and try to stop the service
-if command -v env-sync >/dev/null 2>&1; then
+if [[ "$INSTALL_CLI" == "true" ]] && command -v env-sync >/dev/null 2>&1; then
     echo "Checking for running service..."
-    # Try to stop the service gracefully
     if env-sync service stop 2>&1 | grep -q "Service stopped"; then
         SERVICE_WAS_STOPPED=true
     fi
 fi
 
-# Build and install Go binary
 if [[ "$REMOTE_MODE" == "true" ]]; then
-    # Remote mode - download pre-built binary
     PLATFORM=$(detect_platform)
+    PLATFORM_OS="${PLATFORM%-*}"
+    PLATFORM_ARCH="${PLATFORM##*-}"
     echo "Detected platform: $PLATFORM"
-    TEMP_BINARY=$(download_binary "$PLATFORM")
 
-    # Install downloaded binary
-    cp "$TEMP_BINARY" "$BIN_DIR/env-sync"
-    chmod +x "$BIN_DIR/env-sync"
-
-    # Clean up temporary files
-    rm -rf "$(dirname "$TEMP_BINARY")"
-
-    echo -e "${GREEN}✓ Binary downloaded and installed${NC}"
-else
-    # Local mode - build from source
-    echo "Building Go binary..."
-    cd "$SCRIPT_DIR"
-    make build
-
-    if [[ ! -f "$SCRIPT_DIR/target/env-sync" ]]; then
-        echo -e "${RED}✗ Build failed - binary not found${NC}"
-        exit 1
+    if [[ "$INSTALL_CLI" == "true" ]]; then
+        TEMP_BINARY=$(download_binary "$PLATFORM")
+        cp "$TEMP_BINARY" "$BIN_DIR/env-sync"
+        chmod +x "$BIN_DIR/env-sync"
+        rm -rf "$(dirname "$TEMP_BINARY")"
+        CLI_INSTALLED=true
+        echo -e "${GREEN}✓ CLI binary downloaded and installed${NC}"
     fi
 
-    # Install Go binary
-    cp "$SCRIPT_DIR/target/env-sync" "$BIN_DIR/env-sync"
-    chmod +x "$BIN_DIR/env-sync"
+    if [[ "$INSTALL_GUI" == "true" ]]; then
+        case "$PLATFORM_OS" in
+            macos)
+                TEMP_GUI_ARCHIVE=$(download_artifact "env-sync-gui-macos-${PLATFORM_ARCH}.dmg")
+                TEMP_GUI_DIR="$(mktemp -d)"
+                MOUNT_POINT="$TEMP_GUI_DIR/mount"
+                mkdir -p "$MOUNT_POINT"
+                hdiutil attach "$TEMP_GUI_ARCHIVE" -mountpoint "$MOUNT_POINT" -nobrowse -readonly >/dev/null
+                TEMP_GUI_BUNDLE="$MOUNT_POINT/$GUI_BUNDLE_NAME"
+
+                if [[ ! -d "$TEMP_GUI_BUNDLE" ]]; then
+                    echo -e "${RED}✗ Downloaded macOS GUI bundle is missing ${GUI_BUNDLE_NAME}${NC}"
+                    hdiutil detach "$MOUNT_POINT" -quiet >/dev/null 2>&1 || true
+                    rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
+                    exit 1
+                fi
+
+                if ! install_macos_gui_bundle "$TEMP_GUI_BUNDLE"; then
+                    hdiutil detach "$MOUNT_POINT" -quiet >/dev/null 2>&1 || true
+                    rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
+                    exit 1
+                fi
+                hdiutil detach "$MOUNT_POINT" -quiet >/dev/null 2>&1 || true
+                rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
+                GUI_INSTALLED=true
+                ;;
+            linux)
+                TEMP_GUI_ARCHIVE=$(download_artifact "env-sync-gui-linux-${PLATFORM_ARCH}.tar.gz")
+                TEMP_GUI_DIR="$(mktemp -d)"
+                tar -xzf "$TEMP_GUI_ARCHIVE" -C "$TEMP_GUI_DIR"
+
+                if [[ ! -f "$TEMP_GUI_DIR/$GUI_BINARY_NAME" ]] || [[ ! -f "$TEMP_GUI_DIR/env-sync-gui.png" ]]; then
+                    echo -e "${RED}✗ Downloaded Linux GUI package is missing required files${NC}"
+                    rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
+                    exit 1
+                fi
+
+                install_linux_gui_payload "$TEMP_GUI_DIR/$GUI_BINARY_NAME" "$TEMP_GUI_DIR/env-sync-gui.png"
+                rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
+                GUI_INSTALLED=true
+                ;;
+            *)
+                echo -e "${RED}✗ GUI installation is not available for ${PLATFORM_OS} via install.sh${NC}"
+                exit 1
+                ;;
+        esac
+    fi
+else
+    echo "Building from source..."
+    cd "$SCRIPT_DIR"
+
+    if [[ "$INSTALL_CLI" == "true" ]]; then
+        echo "Building CLI binary..."
+        make build
+
+        if [[ ! -f "$SCRIPT_DIR/target/env-sync" ]]; then
+            echo -e "${RED}✗ CLI build failed - binary not found${NC}"
+            exit 1
+        fi
+
+        cp "$SCRIPT_DIR/target/env-sync" "$BIN_DIR/env-sync"
+        chmod +x "$BIN_DIR/env-sync"
+        CLI_INSTALLED=true
+        echo -e "${GREEN}✓ CLI binary installed${NC}"
+    fi
+
+    if [[ "$INSTALL_GUI" == "true" ]]; then
+        echo "Building GUI binary..."
+
+        if ! command -v npm >/dev/null 2>&1; then
+            echo -e "${RED}✗ npm is required to build the GUI. Install Node.js first.${NC}"
+            exit 1
+        fi
+
+        make build-gui
+
+        if [[ ! -f "$SCRIPT_DIR/target/env-sync-gui" ]]; then
+            echo -e "${RED}✗ GUI build failed - binary not found${NC}"
+            exit 1
+        fi
+
+        case "$OS" in
+            Darwin)
+                TEMP_GUI_DIR="$(mktemp -d)"
+                create_macos_gui_bundle "$SCRIPT_DIR/target/env-sync-gui" "$TEMP_GUI_DIR/$GUI_BUNDLE_NAME"
+                install_macos_gui_bundle "$TEMP_GUI_DIR/$GUI_BUNDLE_NAME"
+                rm -rf "$TEMP_GUI_DIR"
+                ;;
+            Linux)
+                install_linux_gui_payload "$SCRIPT_DIR/target/env-sync-gui" "$SCRIPT_DIR/src/gui/build/appicon.png"
+                ;;
+            *)
+                echo -e "${RED}✗ GUI installation is not available for ${OS} via install.sh${NC}"
+                exit 1
+                ;;
+        esac
+
+        GUI_INSTALLED=true
+    fi
 fi
 
 # Restart service if it was stopped
-if [[ "$SERVICE_WAS_STOPPED" == "true" ]]; then
+if [[ "$SERVICE_WAS_STOPPED" == "true" && "$CLI_INSTALLED" == "true" ]]; then
     echo "Restarting service..."
     "$BIN_DIR/env-sync" service restart >/dev/null 2>&1 || {
         echo -e "${YELLOW}Note: Service was stopped but could not be restarted automatically${NC}"
@@ -287,7 +536,7 @@ echo -e "${GREEN}Installation complete!${NC}"
 echo ""
 
 # Check if bin directory is in PATH
-if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
+if [[ "$INSTALL_CLI" == "true" && ":$PATH:" != *":$BIN_DIR:"* ]]; then
     echo -e "${YELLOW}Warning: $BIN_DIR is not in your PATH${NC}"
     echo "Add the following to your ~/.bashrc or ~/.zshrc:"
     echo ""
@@ -295,34 +544,79 @@ if [[ ":$PATH:" != *":$BIN_DIR:"* ]]; then
     echo ""
 fi
 
-add_shell_integration
+if [[ "$CLI_INSTALLED" == "true" ]]; then
+    add_shell_integration
+fi
 
 # Post-install instructions
 echo "Next steps:"
 echo ""
-echo "env-sync v2.0 (Go binary) has been installed!"
+echo "env-sync v${ENV_SYNC_VERSION} has been installed!"
 echo ""
-echo "1. Initialize your secrets file:"
-echo "   env-sync init --encrypted"
-echo ""
-echo "2. Add your secrets:"
-echo "   env-sync add OPENAI_API_KEY=\"sk-...\""
-echo ""
-echo "3. Set up periodic sync (optional):"
-echo "   env-sync cron --install"
-echo ""
-echo "4. On other machines, repeat steps 1-3"
-echo ""
+if [[ "$CLI_INSTALLED" == "true" ]]; then
+    echo "1. Initialize your secrets file:"
+    echo "   env-sync init --encrypted"
+    echo ""
+    echo "2. Add your secrets:"
+    echo "   env-sync add OPENAI_API_KEY=\"sk-...\""
+    echo ""
+    echo "3. Set up periodic sync (optional):"
+    echo "   env-sync cron --install"
+    echo ""
+    echo "4. On other machines, repeat steps 1-3"
+    echo ""
+fi
+
+if [[ "$GUI_INSTALLED" == "true" ]]; then
+    case "$OS" in
+        Darwin)
+            echo "GUI application location:"
+            echo "  $GUI_INSTALL_TARGET"
+            echo "Launch it from Finder, Spotlight, or:"
+            echo "  open \"$GUI_INSTALL_TARGET\""
+            echo ""
+            ;;
+        Linux)
+            echo "GUI application location:"
+            echo "  $GUI_INSTALL_TARGET"
+            echo "Desktop launcher:"
+            echo "  $GUI_DESKTOP_DIR/env-sync-gui.desktop"
+            echo ""
+            ;;
+    esac
+fi
+
 echo "The machines will automatically discover each other!"
 echo ""
 
 # Verify installation
 echo "Verifying installation..."
-if command -v env-sync >/dev/null 2>&1; then
+if [[ "$CLI_INSTALLED" == "true" ]] && command -v env-sync >/dev/null 2>&1; then
     echo -e "${GREEN}✓ env-sync installed successfully${NC}"
     env-sync --help | head -20
-else
+elif [[ "$CLI_INSTALLED" == "true" ]]; then
     echo -e "${RED}✗ Installation verification failed${NC}"
     echo "Please ensure $BIN_DIR is in your PATH"
     exit 1
+fi
+
+if [[ "$GUI_INSTALLED" == "true" ]]; then
+    case "$OS" in
+        Darwin)
+            if [[ -d "$GUI_INSTALL_TARGET" ]]; then
+                echo -e "${GREEN}✓ env-sync GUI installed successfully${NC}"
+            else
+                echo -e "${RED}✗ GUI installation verification failed${NC}"
+                exit 1
+            fi
+            ;;
+        Linux)
+            if [[ -x "$GUI_INSTALL_TARGET" ]] && [[ -f "$GUI_DESKTOP_DIR/env-sync-gui.desktop" ]]; then
+                echo -e "${GREEN}✓ env-sync GUI installed successfully${NC}"
+            else
+                echo -e "${RED}✗ GUI installation verification failed${NC}"
+                exit 1
+            fi
+            ;;
+    esac
 fi
