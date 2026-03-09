@@ -122,7 +122,7 @@ download_binary() {
         download_url="${download_url}.exe"
     fi
 
-    echo "Downloading env-sync from ${download_url}..."
+    echo "Downloading env-sync from ${download_url}..." >&2
 
     # Create temporary directory for download
     local temp_dir
@@ -132,18 +132,18 @@ download_binary() {
     # Try curl first, then wget
     if command -v curl >/dev/null 2>&1; then
         if ! curl -fsSL -o "$temp_binary" "$download_url"; then
-            echo -e "${RED}Failed to download binary from ${download_url}${NC}"
+            echo -e "${RED}Failed to download binary from ${download_url}${NC}" >&2
             rm -rf "$temp_dir"
             exit 1
         fi
     elif command -v wget >/dev/null 2>&1; then
         if ! wget -q -O "$temp_binary" "$download_url"; then
-            echo -e "${RED}Failed to download binary from ${download_url}${NC}"
+            echo -e "${RED}Failed to download binary from ${download_url}${NC}" >&2
             rm -rf "$temp_dir"
             exit 1
         fi
     else
-        echo -e "${RED}Neither curl nor wget found. Please install one of them.${NC}"
+        echo -e "${RED}Neither curl nor wget found. Please install one of them.${NC}" >&2
         rm -rf "$temp_dir"
         exit 1
     fi
