@@ -175,6 +175,60 @@ download_binary() {
     download_artifact "$artifact_name"
 }
 
+extract_deb_payload() {
+    local deb_path="$1"
+    local destination="$2"
+
+    mkdir -p "$destination"
+
+    if command -v dpkg-deb >/dev/null 2>&1; then
+        dpkg-deb -x "$deb_path" "$destination"
+        return
+    fi
+
+    if ! command -v ar >/dev/null 2>&1; then
+        echo -e "${RED}Neither dpkg-deb nor ar is available to unpack $(basename "$deb_path").${NC}" >&2
+        exit 1
+    fi
+
+    local data_member=""
+    data_member="$(ar t "$deb_path" | awk '/^data\.tar(\.|$)/ { print; exit }')"
+
+    if [[ -z "$data_member" ]]; then
+        echo -e "${RED}Unable to locate Debian payload inside $(basename "$deb_path").${NC}" >&2
+        exit 1
+    fi
+
+    case "$data_member" in
+        *.tar.gz)
+            ar p "$deb_path" "$data_member" | tar -xzf - -C "$destination"
+            ;;
+        *.tar.xz)
+            ar p "$deb_path" "$data_member" | tar -xJf - -C "$destination"
+            ;;
+        *.tar.zst)
+            if command -v unzstd >/dev/null 2>&1; then
+                ar p "$deb_path" "$data_member" | unzstd -c | tar -xf - -C "$destination"
+            elif command -v zstd >/dev/null 2>&1; then
+                ar p "$deb_path" "$data_member" | zstd -d -c | tar -xf - -C "$destination"
+            else
+                echo -e "${RED}zstd support is required to unpack $(basename "$deb_path").${NC}" >&2
+                exit 1
+            fi
+            ;;
+        *.tar.bz2)
+            ar p "$deb_path" "$data_member" | tar -xjf - -C "$destination"
+            ;;
+        *.tar)
+            ar p "$deb_path" "$data_member" | tar -xf - -C "$destination"
+            ;;
+        *)
+            echo -e "${RED}Unsupported Debian payload format: ${data_member}${NC}" >&2
+            exit 1
+            ;;
+    esac
+}
+
 echo -e "${BLUE}Installing env-sync v${ENV_SYNC_VERSION}...${NC}"
 
 # Detect OS
@@ -449,17 +503,19 @@ if [[ "$REMOTE_MODE" == "true" ]]; then
                 GUI_INSTALLED=true
                 ;;
             linux)
-                TEMP_GUI_ARCHIVE=$(download_artifact "env-sync-gui-linux-${PLATFORM_ARCH}.tar.gz")
+                TEMP_GUI_ARCHIVE=$(download_artifact "env-sync-gui-linux-${PLATFORM_ARCH}.deb")
                 TEMP_GUI_DIR="$(mktemp -d)"
-                tar -xzf "$TEMP_GUI_ARCHIVE" -C "$TEMP_GUI_DIR"
+                extract_deb_payload "$TEMP_GUI_ARCHIVE" "$TEMP_GUI_DIR"
 
-                if [[ ! -f "$TEMP_GUI_DIR/$GUI_BINARY_NAME" ]] || [[ ! -f "$TEMP_GUI_DIR/env-sync-gui.png" ]]; then
+                if [[ ! -f "$TEMP_GUI_DIR/opt/env-sync/$GUI_BINARY_NAME" ]] || [[ ! -f "$TEMP_GUI_DIR/usr/share/icons/hicolor/512x512/apps/env-sync-gui.png" ]]; then
                     echo -e "${RED}✗ Downloaded Linux GUI package is missing required files${NC}"
                     rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
                     exit 1
                 fi
 
-                install_linux_gui_payload "$TEMP_GUI_DIR/$GUI_BINARY_NAME" "$TEMP_GUI_DIR/env-sync-gui.png"
+                install_linux_gui_payload \
+                    "$TEMP_GUI_DIR/opt/env-sync/$GUI_BINARY_NAME" \
+                    "$TEMP_GUI_DIR/usr/share/icons/hicolor/512x512/apps/env-sync-gui.png"
                 rm -rf "$(dirname "$TEMP_GUI_ARCHIVE")" "$TEMP_GUI_DIR"
                 GUI_INSTALLED=true
                 ;;
