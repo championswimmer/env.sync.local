@@ -431,7 +431,7 @@ install_macos_gui_bundle() {
     mkdir -p "$GUI_INSTALL_DIR"
     rm -rf "$GUI_INSTALL_TARGET"
     ditto "$bundle_source" "$GUI_INSTALL_TARGET"
-    xattr -rc "$GUI_INSTALL_TARGET" >/dev/null 2>&1 || true
+    xattr -dr com.apple.quarantine "$GUI_INSTALL_TARGET" >/dev/null 2>&1 || true
     echo -e "${GREEN}✓ GUI application installed to ${GUI_INSTALL_TARGET}${NC}"
 }
 
