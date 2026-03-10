@@ -37,6 +37,13 @@ env-sync --help       # full command reference</code></pre>
   </section>
 
   <section class="panel">
+    <h2>Desktop GUI</h2>
+    <p>Prefer a visual workflow? Install <code>env-sync-gui</code> with <code>--all</code> or <code>--gui-only</code> and launch the desktop app alongside the CLI.</p>
+    <p>The GUI works on the same <code>~/.config/env-sync/</code> state as the CLI, so secrets, peers, keys, backups, and mode changes stay in sync whichever interface you use.</p>
+    <p>Inside the app, the dashboard gives you status at a glance, while dedicated views handle secrets, sync, peers, keys, settings, and logs. For the complete GUI guide, see <a href="https://github.com/championswimmer/env.sync.local/blob/main/docs/GUI.md">GUI.md</a>.</p>
+  </section>
+
+  <section class="panel">
     <h2>Mode management</h2>
     <p>Switch between security modes at any time. Mode switching is non-destructive by default.</p>
     <pre><code>env-sync mode get

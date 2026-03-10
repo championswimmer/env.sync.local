@@ -61,6 +61,18 @@ curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
 
 # user-only install (no sudo)
 curl -fsSL https://envsync.arnav.tech/install.sh | bash -s -- --user</code></pre>
+    <p>The installer defaults to the CLI. Add <code>--all</code> to install both the CLI and desktop GUI, or use <code>--gui-only</code> if you only want the GUI app.</p>
+    <pre><code># install both CLI + GUI
+curl -fsSL https://envsync.arnav.tech/install.sh | bash -s -- --user --all
+
+# install only the GUI
+curl -fsSL https://envsync.arnav.tech/install.sh | bash -s -- --user --gui-only</code></pre>
+  </section>
+
+  <section class="panel" style="max-width:720px;margin:0 auto 1rem;">
+    <h2>Prefer a desktop app?</h2>
+    <p>env-sync also ships an optional desktop GUI built with Wails. It uses the same configuration, secrets, keys, and peer registry as the CLI, so you can install one or both and switch between them at any time.</p>
+    <p>For the full GUI walkthrough, platform notes, and development details, see <a href="https://github.com/championswimmer/env.sync.local/blob/main/docs/GUI.md">GUI.md</a>.</p>
   </section>
 
   <section class="panel" style="max-width:720px;margin:0 auto 1rem;">
