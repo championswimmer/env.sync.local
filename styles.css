@@ -530,6 +530,86 @@ footer {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Download page */
+.download-controls {
+  display: grid;
+  gap: 1rem;
+}
+.download-group h3 {
+  margin: 0 0 0.6rem;
+}
+.option-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.option-btn {
+  border: 1px solid var(--border);
+  background: rgba(34, 48, 73, 0.45);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.6rem 0.75rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.15s, background 0.2s;
+  width: auto;
+}
+.option-btn:hover {
+  border-color: rgba(151, 201, 255, 0.4);
+  transform: translateY(-1px);
+}
+.option-btn.active {
+  color: #061120;
+  border-color: transparent;
+  background: linear-gradient(135deg, #80d8ff 0%, #97c9ff 45%, #a8b6ff 100%);
+}
+.option-btn i {
+  margin-right: 0.45rem;
+}
+.download-arch {
+  max-width: 320px;
+}
+.download-arch select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(17, 18, 35, 0.9);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.95rem;
+}
+.download-results h3 {
+  margin-top: 0;
+}
+.download-assets {
+  display: grid;
+  gap: 0.75rem;
+}
+.download-assets .panel {
+  margin: 0;
+}
+.download-guidance h3 {
+  margin-top: 0;
+}
+.post-install-tips {
+  margin: 0;
+  padding-left: 1.1rem;
+  display: grid;
+  gap: 0.55rem;
+  color: var(--text);
+}
+.post-install-tips li {
+  line-height: 1.45;
+}
+.post-install-tips li.tip-hidden {
+  display: none;
+}
+.muted-note {
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 @media (max-width: 880px) {
   .hero { grid-template-columns: 1fr; }
   .hero h1 { font-size: 2rem; }
