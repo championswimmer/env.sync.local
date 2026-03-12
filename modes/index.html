@@ -32,11 +32,11 @@
     <table>
       <thead><tr><th>Dimension</th><th>dev-plaintext-http</th><th>trusted-owner-ssh</th><th>secure-peer</th></tr></thead>
       <tbody>
-        <tr><td><strong>Storage</strong></td><td>Plaintext</td><td>Plaintext (optional AGE)</td><td>AGE encrypted (mandatory)</td></tr>
-        <tr><td><strong>Transport</strong></td><td><i class="fa-solid fa-network-wired"></i> HTTP</td><td><i class="fa-solid fa-terminal"></i> SCP / SSH</td><td><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS</td></tr>
-        <tr><td><strong>Onboarding</strong></td><td>Open — any peer on the network</td><td>Zero-touch if <i class="fa-solid fa-terminal"></i> SSH access exists</td><td>Invitation + explicit approval</td></tr>
-        <tr><td><strong>Authorization</strong></td><td>None</td><td>Implicit via SSH trust</td><td>Explicit approved / revoked states</td></tr>
-        <tr><td><strong>Best for</strong></td><td>Local debugging only</td><td>All your own machines</td><td>Multiple owners sharing secrets</td></tr>
+        <tr><td data-label="Dimension"><strong>Storage</strong></td><td data-label="dev-plaintext-http">Plaintext</td><td data-label="trusted-owner-ssh">Plaintext (optional AGE)</td><td data-label="secure-peer">AGE encrypted (mandatory)</td></tr>
+        <tr><td data-label="Dimension"><strong>Transport</strong></td><td data-label="dev-plaintext-http"><i class="fa-solid fa-network-wired"></i> HTTP</td><td data-label="trusted-owner-ssh"><i class="fa-solid fa-terminal"></i> SCP / SSH</td><td data-label="secure-peer"><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS</td></tr>
+        <tr><td data-label="Dimension"><strong>Onboarding</strong></td><td data-label="dev-plaintext-http">Open — any peer on the network</td><td data-label="trusted-owner-ssh">Zero-touch if <i class="fa-solid fa-terminal"></i> SSH access exists</td><td data-label="secure-peer">Invitation + explicit approval</td></tr>
+        <tr><td data-label="Dimension"><strong>Authorization</strong></td><td data-label="dev-plaintext-http">None</td><td data-label="trusted-owner-ssh">Implicit via SSH trust</td><td data-label="secure-peer">Explicit approved / revoked states</td></tr>
+        <tr><td data-label="Dimension"><strong>Best for</strong></td><td data-label="dev-plaintext-http">Local debugging only</td><td data-label="trusted-owner-ssh">All your own machines</td><td data-label="secure-peer">Multiple owners sharing secrets</td></tr>
       </tbody>
     </table>
   </section>

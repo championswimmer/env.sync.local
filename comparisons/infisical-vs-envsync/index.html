@@ -42,23 +42,23 @@
         <tr><th>Dimension</th><th>env-sync</th><th>Infisical</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Architecture</strong></td><td>Peer-to-peer local mesh — no server</td><td>Centralized platform (cloud or self-hosted)</td></tr>
-        <tr><td><strong>Setup complexity</strong></td><td>One-liner install, <code>env-sync init</code></td><td>Server deployment, user setup, project config</td></tr>
-        <tr><td><strong>Secret types</strong></td><td>Static .env key-value pairs</td><td>Static + dynamic secrets, certificates, SSH keys</td></tr>
-        <tr><td><strong>Dynamic secrets</strong></td><td>Not supported</td><td>✅ PostgreSQL, MySQL, MongoDB, RabbitMQ, AWS IAM</td></tr>
-        <tr><td><strong>Secret rotation</strong></td><td>Manual — re-encrypt on peer changes</td><td>Automated rotation for supported backends</td></tr>
-        <tr><td><strong>Access control</strong></td><td>Mode-based trust (SSH trust or mTLS approval)</td><td>Granular RBAC per user, machine, project, environment</td></tr>
-        <tr><td><strong>Approval workflows</strong></td><td>Peer approve/revoke in secure-peer mode</td><td>Reviewer-based approval for sensitive changes</td></tr>
-        <tr><td><strong>PKI / certificates</strong></td><td>mTLS certs for secure-peer transport only</td><td>Full internal PKI — issue, renew, revoke certificates</td></tr>
-        <tr><td><strong>Integrations</strong></td><td>SSH, mDNS, cron</td><td>Kubernetes Operator, GitHub Actions, Terraform, Ansible, Vercel, AWS/GCP/Azure</td></tr>
-        <tr><td><strong>Web UI / dashboard</strong></td><td>CLI only</td><td>Full web dashboard for management</td></tr>
-        <tr><td><strong>Secret versioning</strong></td><td>Backup-based (last 5 versions)</td><td>Full version history with point-in-time recovery</td></tr>
-        <tr><td><strong>Secret scanning</strong></td><td>Not supported</td><td>✅ Detects and prevents hardcoded secrets</td></tr>
-        <tr><td><strong>Peer discovery</strong></td><td>Automatic via mDNS (Avahi / Bonjour)</td><td>Not applicable — clients connect to server</td></tr>
-        <tr><td><strong>Offline / LAN operation</strong></td><td>✅ Designed for it</td><td>Requires connectivity to Infisical server</td></tr>
-        <tr><td><strong>Compliance</strong></td><td>Basic operational logging</td><td>SOC 2, HIPAA, FIPS 140-3 support</td></tr>
-        <tr><td><strong>Pricing</strong></td><td>Free, open source (MIT)</td><td>Open-core: free tier / paid cloud &amp; enterprise</td></tr>
-        <tr><td><strong>Written in</strong></td><td>Go</td><td>TypeScript / Node.js</td></tr>
+        <tr><td data-label="Dimension"><strong>Architecture</strong></td><td data-label="env-sync">Peer-to-peer local mesh — no server</td><td data-label="Infisical">Centralized platform (cloud or self-hosted)</td></tr>
+        <tr><td data-label="Dimension"><strong>Setup complexity</strong></td><td data-label="env-sync">One-liner install, <code>env-sync init</code></td><td data-label="Infisical">Server deployment, user setup, project config</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret types</strong></td><td data-label="env-sync">Static .env key-value pairs</td><td data-label="Infisical">Static + dynamic secrets, certificates, SSH keys</td></tr>
+        <tr><td data-label="Dimension"><strong>Dynamic secrets</strong></td><td data-label="env-sync">Not supported</td><td data-label="Infisical">✅ PostgreSQL, MySQL, MongoDB, RabbitMQ, AWS IAM</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret rotation</strong></td><td data-label="env-sync">Manual — re-encrypt on peer changes</td><td data-label="Infisical">Automated rotation for supported backends</td></tr>
+        <tr><td data-label="Dimension"><strong>Access control</strong></td><td data-label="env-sync">Mode-based trust (SSH trust or mTLS approval)</td><td data-label="Infisical">Granular RBAC per user, machine, project, environment</td></tr>
+        <tr><td data-label="Dimension"><strong>Approval workflows</strong></td><td data-label="env-sync">Peer approve/revoke in secure-peer mode</td><td data-label="Infisical">Reviewer-based approval for sensitive changes</td></tr>
+        <tr><td data-label="Dimension"><strong>PKI / certificates</strong></td><td data-label="env-sync">mTLS certs for secure-peer transport only</td><td data-label="Infisical">Full internal PKI — issue, renew, revoke certificates</td></tr>
+        <tr><td data-label="Dimension"><strong>Integrations</strong></td><td data-label="env-sync">SSH, mDNS, cron</td><td data-label="Infisical">Kubernetes Operator, GitHub Actions, Terraform, Ansible, Vercel, AWS/GCP/Azure</td></tr>
+        <tr><td data-label="Dimension"><strong>Web UI / dashboard</strong></td><td data-label="env-sync">CLI only</td><td data-label="Infisical">Full web dashboard for management</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret versioning</strong></td><td data-label="env-sync">Backup-based (last 5 versions)</td><td data-label="Infisical">Full version history with point-in-time recovery</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret scanning</strong></td><td data-label="env-sync">Not supported</td><td data-label="Infisical">✅ Detects and prevents hardcoded secrets</td></tr>
+        <tr><td data-label="Dimension"><strong>Peer discovery</strong></td><td data-label="env-sync">Automatic via mDNS (Avahi / Bonjour)</td><td data-label="Infisical">Not applicable — clients connect to server</td></tr>
+        <tr><td data-label="Dimension"><strong>Offline / LAN operation</strong></td><td data-label="env-sync">✅ Designed for it</td><td data-label="Infisical">Requires connectivity to Infisical server</td></tr>
+        <tr><td data-label="Dimension"><strong>Compliance</strong></td><td data-label="env-sync">Basic operational logging</td><td data-label="Infisical">SOC 2, HIPAA, FIPS 140-3 support</td></tr>
+        <tr><td data-label="Dimension"><strong>Pricing</strong></td><td data-label="env-sync">Free, open source (MIT)</td><td data-label="Infisical">Open-core: free tier / paid cloud &amp; enterprise</td></tr>
+        <tr><td data-label="Dimension"><strong>Written in</strong></td><td data-label="env-sync">Go</td><td data-label="Infisical">TypeScript / Node.js</td></tr>
       </tbody>
     </table>
   </section>

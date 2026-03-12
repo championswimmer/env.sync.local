@@ -42,21 +42,21 @@
         <tr><th>Dimension</th><th>env-sync</th><th>dotenvx</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Primary job</strong></td><td>Sync secrets across machines on a LAN</td><td>Encrypt .env files and inject vars at runtime</td></tr>
-        <tr><td><strong>Architecture</strong></td><td>Peer-to-peer mesh with mDNS discovery</td><td>CLI tool per app / per environment</td></tr>
-        <tr><td><strong>Encryption at rest</strong></td><td>Optional AGE (mandatory in secure-peer mode)</td><td>AES-256 with public-key cryptography</td></tr>
-        <tr><td><strong>Transport security</strong></td><td>SSH or HTTPS + mTLS (depending on mode)</td><td>No network transport — files are local or in Git</td></tr>
-        <tr><td><strong>Peer discovery</strong></td><td>Automatic via mDNS (Avahi / Bonjour)</td><td>Not applicable — no peer concept</td></tr>
-        <tr><td><strong>Conflict resolution</strong></td><td>Per-key timestamps + version-aware merge</td><td>File-level encryption — no merge behavior</td></tr>
-        <tr><td><strong>Multi-environment</strong></td><td>One secrets file per machine, mode-aware</td><td>Separate .env.production, .env.staging, etc.</td></tr>
-        <tr><td><strong>Runtime injection</strong></td><td>Shell eval via <code>env-sync load</code></td><td>Cross-language injection via <code>dotenvx run</code></td></tr>
-        <tr><td><strong>CI/CD integration</strong></td><td>Not primary focus — designed for LAN hosts</td><td>Strong — GitHub Actions, Vercel, Docker, etc.</td></tr>
-        <tr><td><strong>Backup &amp; recovery</strong></td><td>Automatic backups (keeps last 5 versions)</td><td>Git history provides version control</td></tr>
-        <tr><td><strong>Key management</strong></td><td>AGE keypairs + SSH keys + mTLS certs</td><td>Secp256k1 keypairs per environment</td></tr>
-        <tr><td><strong>Language support</strong></td><td>Language-agnostic (manages .env files)</td><td>Explicit cross-language runtime support</td></tr>
-        <tr><td><strong>Team onboarding</strong></td><td>SSH trust or invitation-based approval</td><td>Share private keys with team members</td></tr>
-        <tr><td><strong>Pricing</strong></td><td>Free, open source (MIT)</td><td>Free, open source (BSD-3)</td></tr>
-        <tr><td><strong>Written in</strong></td><td>Go</td><td>Node.js / TypeScript</td></tr>
+        <tr><td data-label="Dimension"><strong>Primary job</strong></td><td data-label="env-sync">Sync secrets across machines on a LAN</td><td data-label="dotenvx">Encrypt .env files and inject vars at runtime</td></tr>
+        <tr><td data-label="Dimension"><strong>Architecture</strong></td><td data-label="env-sync">Peer-to-peer mesh with mDNS discovery</td><td data-label="dotenvx">CLI tool per app / per environment</td></tr>
+        <tr><td data-label="Dimension"><strong>Encryption at rest</strong></td><td data-label="env-sync">Optional AGE (mandatory in secure-peer mode)</td><td data-label="dotenvx">AES-256 with public-key cryptography</td></tr>
+        <tr><td data-label="Dimension"><strong>Transport security</strong></td><td data-label="env-sync">SSH or HTTPS + mTLS (depending on mode)</td><td data-label="dotenvx">No network transport — files are local or in Git</td></tr>
+        <tr><td data-label="Dimension"><strong>Peer discovery</strong></td><td data-label="env-sync">Automatic via mDNS (Avahi / Bonjour)</td><td data-label="dotenvx">Not applicable — no peer concept</td></tr>
+        <tr><td data-label="Dimension"><strong>Conflict resolution</strong></td><td data-label="env-sync">Per-key timestamps + version-aware merge</td><td data-label="dotenvx">File-level encryption — no merge behavior</td></tr>
+        <tr><td data-label="Dimension"><strong>Multi-environment</strong></td><td data-label="env-sync">One secrets file per machine, mode-aware</td><td data-label="dotenvx">Separate .env.production, .env.staging, etc.</td></tr>
+        <tr><td data-label="Dimension"><strong>Runtime injection</strong></td><td data-label="env-sync">Shell eval via <code>env-sync load</code></td><td data-label="dotenvx">Cross-language injection via <code>dotenvx run</code></td></tr>
+        <tr><td data-label="Dimension"><strong>CI/CD integration</strong></td><td data-label="env-sync">Not primary focus — designed for LAN hosts</td><td data-label="dotenvx">Strong — GitHub Actions, Vercel, Docker, etc.</td></tr>
+        <tr><td data-label="Dimension"><strong>Backup &amp; recovery</strong></td><td data-label="env-sync">Automatic backups (keeps last 5 versions)</td><td data-label="dotenvx">Git history provides version control</td></tr>
+        <tr><td data-label="Dimension"><strong>Key management</strong></td><td data-label="env-sync">AGE keypairs + SSH keys + mTLS certs</td><td data-label="dotenvx">Secp256k1 keypairs per environment</td></tr>
+        <tr><td data-label="Dimension"><strong>Language support</strong></td><td data-label="env-sync">Language-agnostic (manages .env files)</td><td data-label="dotenvx">Explicit cross-language runtime support</td></tr>
+        <tr><td data-label="Dimension"><strong>Team onboarding</strong></td><td data-label="env-sync">SSH trust or invitation-based approval</td><td data-label="dotenvx">Share private keys with team members</td></tr>
+        <tr><td data-label="Dimension"><strong>Pricing</strong></td><td data-label="env-sync">Free, open source (MIT)</td><td data-label="dotenvx">Free, open source (BSD-3)</td></tr>
+        <tr><td data-label="Dimension"><strong>Written in</strong></td><td data-label="env-sync">Go</td><td data-label="dotenvx">Node.js / TypeScript</td></tr>
       </tbody>
     </table>
   </section>

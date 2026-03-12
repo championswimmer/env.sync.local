@@ -142,9 +142,9 @@ env-sync sync</code></pre>
     <table>
       <thead><tr><th>Mode</th><th>Storage</th><th>Transport</th><th>Best for</th></tr></thead>
       <tbody>
-        <tr><td><strong>trusted-owner-ssh</strong> (default)</td><td>Plaintext (optional AGE)</td><td><i class="fa-solid fa-terminal"></i> SCP / SSH</td><td>All machines belong to you — your laptop, desktop, NUC, server</td></tr>
-        <tr><td><strong>secure-peer</strong></td><td>AGE encrypted (mandatory)</td><td><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS</td><td>Multiple people sharing secrets without giving each other shell access</td></tr>
-        <tr><td><strong>dev-plaintext-http</strong></td><td>Plaintext</td><td><i class="fa-solid fa-network-wired"></i> HTTP</td><td>Quick local debugging only — not for real secrets</td></tr>
+        <tr><td data-label="Mode"><strong>trusted-owner-ssh</strong> (default)</td><td data-label="Storage">Plaintext (optional AGE)</td><td data-label="Transport"><i class="fa-solid fa-terminal"></i> SCP / SSH</td><td data-label="Best for">All machines belong to you — your laptop, desktop, NUC, server</td></tr>
+        <tr><td data-label="Mode"><strong>secure-peer</strong></td><td data-label="Storage">AGE encrypted (mandatory)</td><td data-label="Transport"><i class="fa-solid fa-shield-halved"></i> HTTPS + mTLS</td><td data-label="Best for">Multiple people sharing secrets without giving each other shell access</td></tr>
+        <tr><td data-label="Mode"><strong>dev-plaintext-http</strong></td><td data-label="Storage">Plaintext</td><td data-label="Transport"><i class="fa-solid fa-network-wired"></i> HTTP</td><td data-label="Best for">Quick local debugging only — not for real secrets</td></tr>
       </tbody>
     </table>
     <div style="text-align:center;margin-top:1rem;">

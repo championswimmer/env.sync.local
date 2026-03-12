@@ -41,23 +41,23 @@
         <tr><th>Dimension</th><th>env-sync</th><th>HashiCorp Vault</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Architecture</strong></td><td>Peer-to-peer local mesh — no server</td><td>Centralized server / API platform</td></tr>
-        <tr><td><strong>Setup complexity</strong></td><td>One-liner install, <code>env-sync init</code></td><td>Server provisioning, unsealing, configuration</td></tr>
-        <tr><td><strong>Secret types</strong></td><td>Static .env key-value pairs</td><td>Static + dynamic secrets, leases, PKI certs</td></tr>
-        <tr><td><strong>Dynamic credentials</strong></td><td>Not supported</td><td>Database, cloud IAM, PKI, SSH certs</td></tr>
-        <tr><td><strong>Secret engines</strong></td><td>AGE encryption engine</td><td>22+ engines (KV, database, transit, PKI, cloud, etc.)</td></tr>
-        <tr><td><strong>Auth methods</strong></td><td>SSH keys or mTLS certificates</td><td>AWS IAM, Kubernetes, LDAP, OIDC, GitHub, AppRole, JWT</td></tr>
-        <tr><td><strong>Policy engine</strong></td><td>Mode-based trust boundaries</td><td>Fine-grained HCL policies per path and operation</td></tr>
-        <tr><td><strong>Audit logging</strong></td><td>Operational logs + metadata trail</td><td>Comprehensive immutable audit logs to multiple sinks</td></tr>
-        <tr><td><strong>Multi-tenancy</strong></td><td>Not applicable (single-owner or peer groups)</td><td>Namespace-based isolation per team/BU</td></tr>
-        <tr><td><strong>PKI / cert management</strong></td><td>mTLS certs for secure-peer mode only</td><td>Full CA — issue, rotate, revoke X.509 certificates</td></tr>
-        <tr><td><strong>Peer discovery</strong></td><td>Automatic via mDNS (Avahi / Bonjour)</td><td>Not applicable — clients connect to server API</td></tr>
-        <tr><td><strong>Conflict resolution</strong></td><td>Per-key timestamps + version-aware merge</td><td>Centralized — no conflicts (single source of truth)</td></tr>
-        <tr><td><strong>Offline / LAN operation</strong></td><td>Designed for it</td><td>Requires connectivity to Vault server</td></tr>
-        <tr><td><strong>Operational overhead</strong></td><td>Low — single binary, no dependencies</td><td>High — server infra, HA config, unsealing, upgrades</td></tr>
-        <tr><td><strong>Compliance features</strong></td><td>Basic operational logging</td><td>GDPR, HIPAA, SOC 2, PCI-DSS audit support</td></tr>
-        <tr><td><strong>Pricing</strong></td><td>Free, open source (MIT)</td><td>OSS free / Enterprise &amp; HCP paid tiers</td></tr>
-        <tr><td><strong>Written in</strong></td><td>Go</td><td>Go</td></tr>
+        <tr><td data-label="Dimension"><strong>Architecture</strong></td><td data-label="env-sync">Peer-to-peer local mesh — no server</td><td data-label="HashiCorp Vault">Centralized server / API platform</td></tr>
+        <tr><td data-label="Dimension"><strong>Setup complexity</strong></td><td data-label="env-sync">One-liner install, <code>env-sync init</code></td><td data-label="HashiCorp Vault">Server provisioning, unsealing, configuration</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret types</strong></td><td data-label="env-sync">Static .env key-value pairs</td><td data-label="HashiCorp Vault">Static + dynamic secrets, leases, PKI certs</td></tr>
+        <tr><td data-label="Dimension"><strong>Dynamic credentials</strong></td><td data-label="env-sync">Not supported</td><td data-label="HashiCorp Vault">Database, cloud IAM, PKI, SSH certs</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret engines</strong></td><td data-label="env-sync">AGE encryption engine</td><td data-label="HashiCorp Vault">22+ engines (KV, database, transit, PKI, cloud, etc.)</td></tr>
+        <tr><td data-label="Dimension"><strong>Auth methods</strong></td><td data-label="env-sync">SSH keys or mTLS certificates</td><td data-label="HashiCorp Vault">AWS IAM, Kubernetes, LDAP, OIDC, GitHub, AppRole, JWT</td></tr>
+        <tr><td data-label="Dimension"><strong>Policy engine</strong></td><td data-label="env-sync">Mode-based trust boundaries</td><td data-label="HashiCorp Vault">Fine-grained HCL policies per path and operation</td></tr>
+        <tr><td data-label="Dimension"><strong>Audit logging</strong></td><td data-label="env-sync">Operational logs + metadata trail</td><td data-label="HashiCorp Vault">Comprehensive immutable audit logs to multiple sinks</td></tr>
+        <tr><td data-label="Dimension"><strong>Multi-tenancy</strong></td><td data-label="env-sync">Not applicable (single-owner or peer groups)</td><td data-label="HashiCorp Vault">Namespace-based isolation per team/BU</td></tr>
+        <tr><td data-label="Dimension"><strong>PKI / cert management</strong></td><td data-label="env-sync">mTLS certs for secure-peer mode only</td><td data-label="HashiCorp Vault">Full CA — issue, rotate, revoke X.509 certificates</td></tr>
+        <tr><td data-label="Dimension"><strong>Peer discovery</strong></td><td data-label="env-sync">Automatic via mDNS (Avahi / Bonjour)</td><td data-label="HashiCorp Vault">Not applicable — clients connect to server API</td></tr>
+        <tr><td data-label="Dimension"><strong>Conflict resolution</strong></td><td data-label="env-sync">Per-key timestamps + version-aware merge</td><td data-label="HashiCorp Vault">Centralized — no conflicts (single source of truth)</td></tr>
+        <tr><td data-label="Dimension"><strong>Offline / LAN operation</strong></td><td data-label="env-sync">Designed for it</td><td data-label="HashiCorp Vault">Requires connectivity to Vault server</td></tr>
+        <tr><td data-label="Dimension"><strong>Operational overhead</strong></td><td data-label="env-sync">Low — single binary, no dependencies</td><td data-label="HashiCorp Vault">High — server infra, HA config, unsealing, upgrades</td></tr>
+        <tr><td data-label="Dimension"><strong>Compliance features</strong></td><td data-label="env-sync">Basic operational logging</td><td data-label="HashiCorp Vault">GDPR, HIPAA, SOC 2, PCI-DSS audit support</td></tr>
+        <tr><td data-label="Dimension"><strong>Pricing</strong></td><td data-label="env-sync">Free, open source (MIT)</td><td data-label="HashiCorp Vault">OSS free / Enterprise &amp; HCP paid tiers</td></tr>
+        <tr><td data-label="Dimension"><strong>Written in</strong></td><td data-label="env-sync">Go</td><td data-label="HashiCorp Vault">Go</td></tr>
       </tbody>
     </table>
   </section>

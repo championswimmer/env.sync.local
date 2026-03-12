@@ -42,24 +42,24 @@
         <tr><th>Dimension</th><th>env-sync</th><th>Doppler</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Architecture</strong></td><td>Peer-to-peer local mesh — no server</td><td>Centralized cloud SaaS platform</td></tr>
-        <tr><td><strong>Setup</strong></td><td>One-liner install, <code>env-sync init</code></td><td>Account creation, project setup, CLI install</td></tr>
-        <tr><td><strong>Secret organization</strong></td><td>Single .env file per machine, mode-aware</td><td>Project → Config → Environment hierarchy</td></tr>
-        <tr><td><strong>Runtime injection</strong></td><td>Shell eval via <code>env-sync load</code></td><td><code>doppler run</code> — cross-platform injection</td></tr>
-        <tr><td><strong>Secret delivery</strong></td><td>Pull from LAN peers via SSH or mTLS</td><td>Pull from cloud API, mount as files, inject into runtime</td></tr>
-        <tr><td><strong>Sync model</strong></td><td>Peer-to-peer merge with per-key timestamps</td><td>Centralized — instant propagation from single source</td></tr>
-        <tr><td><strong>Access control</strong></td><td>Mode-based trust (SSH trust or mTLS approval)</td><td>RBAC with service tokens, user roles, project scoping</td></tr>
-        <tr><td><strong>Config change requests</strong></td><td>Peer approve/revoke in secure-peer mode</td><td>Approval workflows for sensitive changes</td></tr>
-        <tr><td><strong>Activity logging</strong></td><td>Operational logs + metadata trail</td><td>Full audit trail with Git-style activity log</td></tr>
-        <tr><td><strong>Versioning &amp; rollback</strong></td><td>Backup-based (last 5 versions)</td><td>Full version history with instant rollback</td></tr>
-        <tr><td><strong>Missing secret detection</strong></td><td>Not built-in</td><td>✅ Alerts for missing or drift secrets</td></tr>
-        <tr><td><strong>Web dashboard</strong></td><td>CLI only</td><td>Full web UI for management</td></tr>
-        <tr><td><strong>Integrations</strong></td><td>SSH, mDNS, cron</td><td>GitHub Actions, Kubernetes, Terraform, AWS/GCP/Azure, Vercel, Jenkins</td></tr>
-        <tr><td><strong>Peer discovery</strong></td><td>Automatic via mDNS (Avahi / Bonjour)</td><td>Not applicable — centralized model</td></tr>
-        <tr><td><strong>Offline / LAN operation</strong></td><td>✅ Designed for it</td><td>❌ Requires internet connectivity to Doppler cloud</td></tr>
-        <tr><td><strong>Export formats</strong></td><td>.env files</td><td>.env, JSON, YAML, Docker, and more</td></tr>
-        <tr><td><strong>Pricing</strong></td><td>Free, open source (MIT)</td><td>Free tier / Team ($6/user/mo) / Enterprise</td></tr>
-        <tr><td><strong>Open source</strong></td><td>✅ Fully open source</td><td>CLI open source / Platform proprietary</td></tr>
+        <tr><td data-label="Dimension"><strong>Architecture</strong></td><td data-label="env-sync">Peer-to-peer local mesh — no server</td><td data-label="Doppler">Centralized cloud SaaS platform</td></tr>
+        <tr><td data-label="Dimension"><strong>Setup</strong></td><td data-label="env-sync">One-liner install, <code>env-sync init</code></td><td data-label="Doppler">Account creation, project setup, CLI install</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret organization</strong></td><td data-label="env-sync">Single .env file per machine, mode-aware</td><td data-label="Doppler">Project → Config → Environment hierarchy</td></tr>
+        <tr><td data-label="Dimension"><strong>Runtime injection</strong></td><td data-label="env-sync">Shell eval via <code>env-sync load</code></td><td data-label="Doppler"><code>doppler run</code> — cross-platform injection</td></tr>
+        <tr><td data-label="Dimension"><strong>Secret delivery</strong></td><td data-label="env-sync">Pull from LAN peers via SSH or mTLS</td><td data-label="Doppler">Pull from cloud API, mount as files, inject into runtime</td></tr>
+        <tr><td data-label="Dimension"><strong>Sync model</strong></td><td data-label="env-sync">Peer-to-peer merge with per-key timestamps</td><td data-label="Doppler">Centralized — instant propagation from single source</td></tr>
+        <tr><td data-label="Dimension"><strong>Access control</strong></td><td data-label="env-sync">Mode-based trust (SSH trust or mTLS approval)</td><td data-label="Doppler">RBAC with service tokens, user roles, project scoping</td></tr>
+        <tr><td data-label="Dimension"><strong>Config change requests</strong></td><td data-label="env-sync">Peer approve/revoke in secure-peer mode</td><td data-label="Doppler">Approval workflows for sensitive changes</td></tr>
+        <tr><td data-label="Dimension"><strong>Activity logging</strong></td><td data-label="env-sync">Operational logs + metadata trail</td><td data-label="Doppler">Full audit trail with Git-style activity log</td></tr>
+        <tr><td data-label="Dimension"><strong>Versioning &amp; rollback</strong></td><td data-label="env-sync">Backup-based (last 5 versions)</td><td data-label="Doppler">Full version history with instant rollback</td></tr>
+        <tr><td data-label="Dimension"><strong>Missing secret detection</strong></td><td data-label="env-sync">Not built-in</td><td data-label="Doppler">✅ Alerts for missing or drift secrets</td></tr>
+        <tr><td data-label="Dimension"><strong>Web dashboard</strong></td><td data-label="env-sync">CLI only</td><td data-label="Doppler">Full web UI for management</td></tr>
+        <tr><td data-label="Dimension"><strong>Integrations</strong></td><td data-label="env-sync">SSH, mDNS, cron</td><td data-label="Doppler">GitHub Actions, Kubernetes, Terraform, AWS/GCP/Azure, Vercel, Jenkins</td></tr>
+        <tr><td data-label="Dimension"><strong>Peer discovery</strong></td><td data-label="env-sync">Automatic via mDNS (Avahi / Bonjour)</td><td data-label="Doppler">Not applicable — centralized model</td></tr>
+        <tr><td data-label="Dimension"><strong>Offline / LAN operation</strong></td><td data-label="env-sync">✅ Designed for it</td><td data-label="Doppler">❌ Requires internet connectivity to Doppler cloud</td></tr>
+        <tr><td data-label="Dimension"><strong>Export formats</strong></td><td data-label="env-sync">.env files</td><td data-label="Doppler">.env, JSON, YAML, Docker, and more</td></tr>
+        <tr><td data-label="Dimension"><strong>Pricing</strong></td><td data-label="env-sync">Free, open source (MIT)</td><td data-label="Doppler">Free tier / Team ($6/user/mo) / Enterprise</td></tr>
+        <tr><td data-label="Dimension"><strong>Open source</strong></td><td data-label="env-sync">✅ Fully open source</td><td data-label="Doppler">CLI open source / Platform proprietary</td></tr>
       </tbody>
     </table>
   </section>

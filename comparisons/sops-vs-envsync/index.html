@@ -42,21 +42,21 @@
         <tr><th>Dimension</th><th>env-sync</th><th>SOPS</th></tr>
       </thead>
       <tbody>
-        <tr><td><strong>Primary job</strong></td><td>Synchronize .env state between machines</td><td>Encrypt and decrypt secrets files for version control</td></tr>
-        <tr><td><strong>Architecture</strong></td><td>Peer-to-peer mesh with mDNS discovery</td><td>CLI tool — no server, no networking</td></tr>
-        <tr><td><strong>Delivery model</strong></td><td>Live peer sync over SSH or HTTPS+mTLS</td><td>File-centric — Git push/pull, CI/CD pipelines</td></tr>
-        <tr><td><strong>Encryption</strong></td><td>AGE (optional or mandatory by mode)</td><td>AGE, PGP, AWS KMS, GCP KMS, Azure Key Vault, HashiCorp Vault</td></tr>
-        <tr><td><strong>Key backends</strong></td><td>AGE keypairs + transport identity</td><td>7+ backends including cloud KMS providers</td></tr>
-        <tr><td><strong>Key groups / threshold</strong></td><td>Not supported</td><td>n-of-m key groups for split-knowledge access</td></tr>
-        <tr><td><strong>File format support</strong></td><td>.env files (key=value)</td><td>YAML, JSON, ENV, INI, binary</td></tr>
-        <tr><td><strong>Conflict resolution</strong></td><td>Per-key timestamps + version-aware merge</td><td>No built-in merge — handled by Git or external tooling</td></tr>
-        <tr><td><strong>Peer discovery</strong></td><td>Automatic via mDNS (Avahi / Bonjour)</td><td>Not applicable — no peer concept</td></tr>
-        <tr><td><strong>Audit logging</strong></td><td>Operational logs + local metadata</td><td>Decrypt audit to PostgreSQL database</td></tr>
-        <tr><td><strong>Key rotation</strong></td><td>Re-encrypt when peer list changes</td><td>Built-in key rotation across all files</td></tr>
-        <tr><td><strong>Backup &amp; recovery</strong></td><td>Automatic backups (keeps last 5 versions)</td><td>Git history provides version control</td></tr>
-        <tr><td><strong>CI/CD integration</strong></td><td>Not primary focus — designed for LAN hosts</td><td>Core workflow — GitOps, Terraform, Kubernetes</td></tr>
-        <tr><td><strong>Pricing</strong></td><td>Free, open source (MIT)</td><td>Free, open source (MPL-2.0)</td></tr>
-        <tr><td><strong>Written in</strong></td><td>Go</td><td>Go</td></tr>
+        <tr><td data-label="Dimension"><strong>Primary job</strong></td><td data-label="env-sync">Synchronize .env state between machines</td><td data-label="SOPS">Encrypt and decrypt secrets files for version control</td></tr>
+        <tr><td data-label="Dimension"><strong>Architecture</strong></td><td data-label="env-sync">Peer-to-peer mesh with mDNS discovery</td><td data-label="SOPS">CLI tool — no server, no networking</td></tr>
+        <tr><td data-label="Dimension"><strong>Delivery model</strong></td><td data-label="env-sync">Live peer sync over SSH or HTTPS+mTLS</td><td data-label="SOPS">File-centric — Git push/pull, CI/CD pipelines</td></tr>
+        <tr><td data-label="Dimension"><strong>Encryption</strong></td><td data-label="env-sync">AGE (optional or mandatory by mode)</td><td data-label="SOPS">AGE, PGP, AWS KMS, GCP KMS, Azure Key Vault, HashiCorp Vault</td></tr>
+        <tr><td data-label="Dimension"><strong>Key backends</strong></td><td data-label="env-sync">AGE keypairs + transport identity</td><td data-label="SOPS">7+ backends including cloud KMS providers</td></tr>
+        <tr><td data-label="Dimension"><strong>Key groups / threshold</strong></td><td data-label="env-sync">Not supported</td><td data-label="SOPS">n-of-m key groups for split-knowledge access</td></tr>
+        <tr><td data-label="Dimension"><strong>File format support</strong></td><td data-label="env-sync">.env files (key=value)</td><td data-label="SOPS">YAML, JSON, ENV, INI, binary</td></tr>
+        <tr><td data-label="Dimension"><strong>Conflict resolution</strong></td><td data-label="env-sync">Per-key timestamps + version-aware merge</td><td data-label="SOPS">No built-in merge — handled by Git or external tooling</td></tr>
+        <tr><td data-label="Dimension"><strong>Peer discovery</strong></td><td data-label="env-sync">Automatic via mDNS (Avahi / Bonjour)</td><td data-label="SOPS">Not applicable — no peer concept</td></tr>
+        <tr><td data-label="Dimension"><strong>Audit logging</strong></td><td data-label="env-sync">Operational logs + local metadata</td><td data-label="SOPS">Decrypt audit to PostgreSQL database</td></tr>
+        <tr><td data-label="Dimension"><strong>Key rotation</strong></td><td data-label="env-sync">Re-encrypt when peer list changes</td><td data-label="SOPS">Built-in key rotation across all files</td></tr>
+        <tr><td data-label="Dimension"><strong>Backup &amp; recovery</strong></td><td data-label="env-sync">Automatic backups (keeps last 5 versions)</td><td data-label="SOPS">Git history provides version control</td></tr>
+        <tr><td data-label="Dimension"><strong>CI/CD integration</strong></td><td data-label="env-sync">Not primary focus — designed for LAN hosts</td><td data-label="SOPS">Core workflow — GitOps, Terraform, Kubernetes</td></tr>
+        <tr><td data-label="Dimension"><strong>Pricing</strong></td><td data-label="env-sync">Free, open source (MIT)</td><td data-label="SOPS">Free, open source (MPL-2.0)</td></tr>
+        <tr><td data-label="Dimension"><strong>Written in</strong></td><td data-label="env-sync">Go</td><td data-label="SOPS">Go</td></tr>
       </tbody>
     </table>
   </section>
