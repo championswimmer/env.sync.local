@@ -28,20 +28,20 @@ Migration must keep these capabilities, but move page composition into reusable 
 
 ## 3) Target Stack & Build Mode
 
-## Framework/tooling
+### Framework/tooling
 
 - **Nuxt 3** (Vue 3 + Vite)
 - **TypeScript** everywhere possible (`lang="ts"` in SFCs, typed composables/data)
 - Optional Nuxt modules only if needed for parity (prefer minimal dependencies)
 
-## Static output
+### Static output
 
 - Use Nuxt static generation:
-  - `nuxi generate` (or `nuxt generate`)
+  - `nuxi generate`
   - output directory: `.output/public`
 - Deploy generated `.output/public` contents to `gh-pages`
 
-## Rendering mode
+### Rendering mode
 
 - Prefer `ssr: true` + prerender for static output (best SEO parity)
 - Explicitly prerender all route paths listed below
@@ -63,7 +63,8 @@ env.sync.local/
 │   │   ├── CNAME
 │   │   ├── robots.txt
 │   │   ├── sitemap.xml                  # initially copied; can become generated later
-│   │   ├── install.sh                   # injected in CI (do not hand-edit)
+│   │   ├── install.sh                   # committed placeholder; overwritten in CI from repo root install.sh
+│   │   ├── .nojekyll                    # committed once so generated output always includes it
 │   │   └── assets/                      # copied from current website/assets
 │   ├── assets/
 │   │   └── css/
@@ -154,7 +155,7 @@ All existing public paths should remain unchanged:
 
 ## 6) Componentization Plan (remove duplication)
 
-## Shared layout
+### Shared layout
 
 - `layouts/default.vue`
   - wraps every page with:
@@ -162,7 +163,7 @@ All existing public paths should remain unchanged:
     - `<main><slot /></main>`
     - `<SiteFooter />`
 
-## Header/footer decomposition
+### Header/footer decomposition
 
 - `components/layout/SiteHeader.vue`
   - brand link
@@ -176,12 +177,12 @@ All existing public paths should remain unchanged:
 
 This is the main duplication fix: one source for nav/footer used by all routes.
 
-## Shared content blocks
+### Shared content blocks
 
 - `HeroSection`, `CtaBanner`, `ComparisonCard`, `TrustBadges`, `ModesComparisonTable`
   - extract repeated visual sections that appear in homepage/comparison/installation pages
 
-## Data-driven links/content
+### Data-driven links/content
 
 - `data/nav.ts` and `data/footer.ts` own link metadata once, consumed by header/footer components.
 - `data/comparisons.ts` owns comparison-card metadata.
@@ -217,26 +218,26 @@ Nuxt migration approach:
 
 Current workflow file: `.github/workflows/website-pages.yml`
 
-## New high-level job flow
+### New high-level job flow
 
 1. Checkout repository
-2. Setup Node (`actions/setup-node`) with cache (`npm`)
+2. Setup Node (`actions/setup-node`) with cache (`npm`) using active LTS (Node 20)
 3. Install dependencies in `website-app/`
 4. Prepare site artifacts:
    - copy `install.sh` to `website-app/public/install.sh`
    - run `python3 build/fetch_latest_release_for_website.py` with output path updated to `website-app/public/download/latest-release.json`
-   - ensure `.nojekyll` exists in generated output (or in public root)
+   - keep `website-app/public/.nojekyll` in repo so it is emitted in generated output
 5. Run `npm run generate` in `website-app/`
 6. Publish `website-app/.output/public` to `gh-pages` via `peaceiris/actions-gh-pages`
 
-## Workflow trigger/path updates
+### Workflow trigger/path updates
 
 - Replace static-website path trigger:
   - from `website/**`
   - to include `website-app/**`, related build scripts, and workflow file
 - Keep release + workflow_dispatch triggers.
 
-## Example deployment deltas
+### Example deployment deltas
 
 - `publish_dir`: `./website-app/.output/public`
 - add Node setup + generate step
@@ -246,29 +247,37 @@ Current workflow file: `.github/workflows/website-pages.yml`
 
 ## 10) Migration phases (small, safe increments)
 
-## Phase 1: Scaffold & CI dry-run
+Before phase execution, standardize `website-app/package.json` scripts.
+`nuxi` is available via the local Nuxt dependency when run through npm scripts (no global install required):
+
+- `"dev": "nuxt dev"`
+- `"build": "nuxt build"`
+- `"generate": "nuxi generate"`
+- `"preview": "nuxt preview"`
+
+### Phase 1: Scaffold & CI dry-run
 
 - Create `website-app/` with Nuxt TypeScript scaffold.
 - Copy static assets and baseline CSS.
 - Add CI steps for install + generate (without cutting over publish dir yet, if desired for dry run).
 
-## Phase 2: Shared shell first
+### Phase 2: Shared shell first
 
 - Implement `default.vue`, `SiteHeader`, `SiteFooter`, and shared nav/footer data.
 - Port homepage and one inner page to validate component approach.
 
-## Phase 3: Complete route parity
+### Phase 3: Complete route parity
 
 - Port all existing routes listed above.
 - Add explicit prerender route list in `nuxt.config.ts`.
 - Validate link integrity and canonical tags.
 
-## Phase 4: Download parity & release metadata
+### Phase 4: Download parity & release metadata
 
 - Port download selector + tips behavior.
 - Wire latest-release JSON fetch to new public path.
 
-## Phase 5: Cutover and cleanup
+### Phase 5: Cutover and cleanup
 
 - Switch workflow `publish_dir` to Nuxt generated output.
 - Remove legacy `website/` source files after parity verification.
@@ -318,4 +327,3 @@ Migration is complete when:
 3. website code is TypeScript-based,
 4. GitHub Pages deploys Nuxt prerendered output from CI,
 5. parity checks for metadata, links, and download-release data pass.
-
