@@ -67,7 +67,9 @@ async function initEnvSync() {
 async function startServer() {
   try {
     // @ts-expect-error Wails bindings
-    await window.go.main.ServiceMgmtService.StartServer(0, true)
+    const configuredPort = await window.go.main.ServiceMgmtService.GetServerPort()
+    // @ts-expect-error Wails bindings
+    await window.go.main.ServiceMgmtService.StartServer(configuredPort, true)
     toast.success('Server started')
     await status.fetchStatus()
   } catch (e) {
