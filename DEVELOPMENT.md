@@ -1,8 +1,10 @@
 # Development
 
-## Linux build prerequisites
+## Debian/Ubuntu build prerequisites (GUI)
 
-To build env-sync from source on Linux, install the required system packages first:
+The core CLI build (`make build`) does not require these GTK/WebKit dependencies.
+
+To build the optional env-sync desktop GUI from source on Debian/Ubuntu Linux, install these system packages first:
 
 ```bash
 sudo apt update
