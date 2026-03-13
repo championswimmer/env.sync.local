@@ -142,6 +142,7 @@ fi
 ## Documentation
 
 - **[INSTALLATION.md](./docs/INSTALLATION.md)** - Detailed installation instructions for all platforms
+- **[DEVELOPMENT.md](./DEVELOPMENT.md)** - Development setup and Linux build prerequisites
 - **[USAGE.md](./docs/USAGE.md)** - Complete command reference and workflows
 - **[SECURITY-MODES.md](./docs/SECURITY-MODES.md)** - Security model details and threat analysis
 - **[GUI.md](./docs/GUI.md)** - Desktop GUI application guide
