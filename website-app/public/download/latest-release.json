@@ -1,0 +1,90 @@
+{
+  "tag_name": "v3.2.0",
+  "assets": [
+    {
+      "name": "checksums.txt",
+      "size": 1491,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/checksums.txt"
+    },
+    {
+      "name": "env-sync-gui-linux-amd64",
+      "size": 11648544,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-linux-amd64"
+    },
+    {
+      "name": "env-sync-gui-linux-amd64.deb",
+      "size": 4515850,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-linux-amd64.deb"
+    },
+    {
+      "name": "env-sync-gui-linux-arm64",
+      "size": 10964712,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-linux-arm64"
+    },
+    {
+      "name": "env-sync-gui-linux-arm64.deb",
+      "size": 4118816,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-linux-arm64.deb"
+    },
+    {
+      "name": "env-sync-gui-macos-amd64",
+      "size": 11241464,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-macos-amd64"
+    },
+    {
+      "name": "env-sync-gui-macos-amd64.dmg",
+      "size": 5325474,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-macos-amd64.dmg"
+    },
+    {
+      "name": "env-sync-gui-macos-arm64",
+      "size": 10656146,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-macos-arm64"
+    },
+    {
+      "name": "env-sync-gui-macos-arm64.dmg",
+      "size": 4963484,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-macos-arm64.dmg"
+    },
+    {
+      "name": "env-sync-gui-windows-amd64-installer.exe",
+      "size": 6955883,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-windows-amd64-installer.exe"
+    },
+    {
+      "name": "env-sync-gui-windows-amd64-portable.zip",
+      "size": 4875793,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-gui-windows-amd64-portable.zip"
+    },
+    {
+      "name": "env-sync-linux-amd64",
+      "size": 9158948,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-linux-amd64"
+    },
+    {
+      "name": "env-sync-linux-arm64",
+      "size": 8585400,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-linux-arm64"
+    },
+    {
+      "name": "env-sync-macos-amd64",
+      "size": 9248672,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-macos-amd64"
+    },
+    {
+      "name": "env-sync-macos-arm64",
+      "size": 8688834,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-macos-arm64"
+    },
+    {
+      "name": "env-sync-windows-amd64.exe",
+      "size": 7992320,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-windows-amd64.exe"
+    },
+    {
+      "name": "env-sync-windows-arm64.exe",
+      "size": 7328768,
+      "browser_download_url": "https://github.com/championswimmer/env.sync.local/releases/download/v3.2.0/env-sync-windows-arm64.exe"
+    }
+  ]
+}
