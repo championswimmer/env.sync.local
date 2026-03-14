@@ -5,8 +5,9 @@ on:
     branches:
       - main
     paths:
-      - 'website/**'
+      - 'website-app/**'
       - 'install.sh'
+      - 'build/fetch_latest_release_for_website.py'
       - '.github/workflows/website-pages.yml'
   release:
     types: [published]
@@ -22,17 +23,31 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Prepare website for publishing
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: website-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: website-app
+        run: npm ci
+
+      - name: Prepare site artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          touch website/.nojekyll
-          cp install.sh website/install.sh
+          cp install.sh website-app/public/install.sh
           python3 ./build/fetch_latest_release_for_website.py
+
+      - name: Generate static site
+        working-directory: website-app
+        run: npm run generate
 
       - name: Deploy website to gh-pages
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_branch: gh-pages
-          publish_dir: ./website
+          publish_dir: ./website-app/.output/public

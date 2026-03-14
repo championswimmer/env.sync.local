@@ -9,7 +9,9 @@ import urllib.request
 def main() -> None:
     repo = os.environ.get("GITHUB_REPOSITORY", "championswimmer/env.sync.local")
     token = os.environ.get("GITHUB_TOKEN", "")
-    output_path = pathlib.Path("website/download/latest-release.json")
+    output_path = pathlib.Path(
+        os.environ.get("OUTPUT_PATH", "website-app/public/download/latest-release.json")
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
     headers = {
