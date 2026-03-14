@@ -1,0 +1,190 @@
+<script setup lang="ts">
+useHead({
+  title: 'Trusted Peers setup guide | env-sync',
+  meta: [
+    { name: 'description', content: 'Step-by-step guide to set up env-sync in trusted-owner-ssh mode. Add your first device, onboard additional machines, enable encryption, and remove devices.' },
+    { name: 'keywords', content: 'env-sync trusted-owner, SSH sync, personal machines, peer-to-peer secrets, trusted owner mode' },
+    { property: 'og:title', content: 'Trusted Peers setup guide | env-sync' },
+    { property: 'og:description', content: 'Step-by-step guide to set up env-sync in trusted-owner-ssh mode. Sync secrets across all your own machines over SSH.' },
+    { property: 'og:type', content: 'article' },
+    { property: 'og:url', content: 'https://envsync.arnav.tech/installation/trusted-peers' },
+    { property: 'og:image', content: 'https://envsync.arnav.tech/assets/cover.png' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'Trusted Peers setup guide | env-sync' },
+    { name: 'twitter:description', content: 'Set up env-sync across your own machines using SSH. Step-by-step from first device to a full mesh.' },
+    { name: 'twitter:image', content: 'https://envsync.arnav.tech/assets/cover.png' },
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://envsync.arnav.tech/installation/trusted-peers' },
+  ],
+})
+</script>
+
+<template>
+  <NuxtLink class="back-link" to="/installation">← Installation guides</NuxtLink>
+
+  <div class="subpage-hero">
+    <h1>Trusted Peers setup</h1>
+    <p>Set up <strong>trusted-owner-ssh</strong> mode — ideal when every device on the network belongs to you. Secrets sync over SSH, no invitation required.</p>
+  </div>
+
+  <section class="panel">
+    <h2>Overview</h2>
+    <p><strong>trusted-owner-ssh</strong> is the default mode. It uses SCP/SSH for transport so any machine you can SSH into is automatically a sync peer. No server process is needed — env-sync calls SSH directly.</p>
+    <table>
+      <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td data-label="Aspect"><strong>Transport</strong></td><td data-label="Detail"><i class="fa-solid fa-terminal"></i> SCP / SSH (encrypted by default)</td></tr>
+        <tr><td data-label="Aspect"><strong>Storage</strong></td><td data-label="Detail">Plaintext by default, optional AGE encryption</td></tr>
+        <tr><td data-label="Aspect"><strong>Onboarding</strong></td><td data-label="Detail">Zero-touch — any peer reachable via SSH</td></tr>
+        <tr><td data-label="Aspect"><strong>Best for</strong></td><td data-label="Detail">Your laptop, desktop, NUC, home server — all yours</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Step 1 -->
+  <section class="panel">
+    <h2>Step 1 — Set up your first device</h2>
+    <p>Install env-sync and initialize on the machine that already has the secrets you want to share.</p>
+    <pre><code># install env-sync
+curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
+
+# verify
+env-sync --version
+
+# set mode (trusted-owner-ssh is the default, but be explicit)
+env-sync mode set trusted-owner-ssh --yes
+
+# initialize the secrets file
+env-sync init
+
+# add your secrets
+env-sync add OPENAI_API_KEY="sk-abc123xyz"
+env-sync add DATABASE_URL="postgres://user:pass@localhost/db"
+
+# check status
+env-sync status</code></pre>
+    <p>At this point your first device is ready. Secrets are stored at <code>~/.config/env-sync/.secrets.env</code>.</p>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="panel">
+    <h2>Step 2 — Add a second device</h2>
+    <p>Install env-sync on the new machine and set up SSH access so both machines can reach each other.</p>
+
+    <h3>2a — Install env-sync on the new device</h3>
+    <pre><code># on the new machine
+curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
+env-sync mode set trusted-owner-ssh --yes
+env-sync init</code></pre>
+
+    <h3>2b — Set up SSH keys between the two machines</h3>
+    <p>Both machines need passwordless SSH access to each other. Run from each machine:</p>
+    <pre><code># from the NEW machine → first device
+ssh-copy-id user@first-device.local
+
+# from the FIRST device → new machine
+ssh-copy-id user@new-device.local</code></pre>
+    <p>Verify SSH works in both directions:</p>
+    <pre><code>ssh user@first-device.local "echo ok"
+ssh user@new-device.local "echo ok"</code></pre>
+
+    <h3>2c — Discover and sync</h3>
+    <pre><code># on the new machine — discover peers
+env-sync discover
+
+# sync secrets from the first device
+env-sync sync</code></pre>
+    <p>The new machine will discover the first device via mDNS, fetch secrets over SCP, and merge them locally. Both machines now have identical secrets.</p>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="panel">
+    <h2>Step 3 — Add more devices</h2>
+    <p>Repeat <strong>Step 2</strong> for every additional machine. The process is always the same:</p>
+    <ol>
+      <li>Install env-sync and initialize.</li>
+      <li>Exchange SSH keys with <strong>at least one</strong> existing peer.</li>
+      <li>Run <code>env-sync sync</code> to pull secrets.</li>
+    </ol>
+    <p>Because discovery uses mDNS, the new machine will automatically find all peers on the local network. It only needs SSH access to one of them to fetch the secrets file.</p>
+    <pre><code># on each new machine
+curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
+env-sync mode set trusted-owner-ssh --yes
+env-sync init
+ssh-copy-id user@any-existing-peer.local
+env-sync sync</code></pre>
+  </section>
+
+  <!-- Optional encryption -->
+  <section class="panel">
+    <h2>Optional — Enable AGE encryption</h2>
+    <p>By default, secrets are stored in plaintext (SSH already encrypts the transport). For defense-in-depth you can enable per-value AGE encryption:</p>
+
+    <h3>On every device</h3>
+    <pre><code># initialize with encryption (generates an AGE key pair)
+env-sync init --encrypted</code></pre>
+
+    <h3>Exchange public keys</h3>
+    <p>Each device needs the AGE public keys of all other devices so secrets can be encrypted for everyone:</p>
+    <pre><code># on device A — get its public key
+env-sync key show
+# outputs: age1xxxxxxxxxx...
+
+# on device B — import device A's key
+env-sync key import age1xxxxxxxxxx... deviceA.local
+
+# repeat in both directions for every pair</code></pre>
+
+    <h3>Sync to re-encrypt</h3>
+    <pre><code># trigger a sync to re-encrypt secrets for all known recipients
+env-sync sync</code></pre>
+    <p>After sync, secrets are encrypted to all registered public keys. New devices added later will trigger automatic re-encryption when they sync.</p>
+  </section>
+
+  <!-- Automate -->
+  <section class="panel">
+    <h2>Automate sync</h2>
+    <pre><code># install cron job (syncs every 30 minutes)
+env-sync cron --install
+
+# or with a custom interval
+env-sync cron --install --interval 10
+
+# auto-load secrets in your shell
+# add to ~/.bashrc or ~/.zshrc:
+eval "$(env-sync load 2>/dev/null)"</code></pre>
+  </section>
+
+  <!-- Remove device -->
+  <section class="panel">
+    <h2>Remove a device from the network</h2>
+    <p>When a machine leaves your fleet (sold, decommissioned, etc.), clean it up:</p>
+
+    <h3>On the departing device</h3>
+    <pre><code># stop the service and remove cron
+env-sync service uninstall
+env-sync cron --remove
+
+# delete all local data
+rm -rf ~/.config/env-sync
+
+# remove the binary
+sudo rm -f /usr/local/bin/env-sync</code></pre>
+
+    <h3>On remaining devices</h3>
+    <pre><code># remove the departing machine's SSH key (optional)
+ssh-keygen -R departed-host.local</code></pre>
+    <p>If encryption is enabled, the departing device's public key will be automatically dropped from the recipient list on the next sync, since it no longer advertises itself via mDNS.</p>
+    <p><strong>For extra security</strong>: rotate any secrets the departing device had access to.</p>
+  </section>
+
+  <section class="cta-banner">
+    <h2>All set?</h2>
+    <p>Check out the usage guide for advanced features like force-pull, dry-run, and secret management.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <NuxtLink class="btn btn-primary" to="/usage">Usage guide →</NuxtLink>
+      <NuxtLink class="btn btn-secondary" to="/installation/secure-peers">Secure Peers guide</NuxtLink>
+    </div>
+  </section>
+</template>

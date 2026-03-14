@@ -1,0 +1,227 @@
+<script setup lang="ts">
+useHead({
+  title: 'Secure Peers setup guide | env-sync',
+  meta: [
+    { name: 'description', content: 'Step-by-step guide to set up env-sync in secure-peer mode with mTLS and AGE encryption. Invite peers, approve access, and revoke devices.' },
+    { name: 'keywords', content: 'env-sync secure-peer, mTLS secrets, AGE encryption, peer invitation, cross-team secrets, zero-trust sync' },
+    { property: 'og:title', content: 'Secure Peers setup guide | env-sync' },
+    { property: 'og:description', content: 'Set up env-sync in secure-peer mode — mTLS authentication, AGE encryption, invitation-based onboarding for cross-team collaboration.' },
+    { property: 'og:type', content: 'article' },
+    { property: 'og:url', content: 'https://envsync.arnav.tech/installation/secure-peers' },
+    { property: 'og:image', content: 'https://envsync.arnav.tech/assets/cover.png' },
+    { name: 'twitter:card', content: 'summary_large_image' },
+    { name: 'twitter:title', content: 'Secure Peers setup guide | env-sync' },
+    { name: 'twitter:description', content: 'mTLS + AGE encryption for cross-team secret sharing. Invitation-based onboarding with explicit approval.' },
+    { name: 'twitter:image', content: 'https://envsync.arnav.tech/assets/cover.png' },
+  ],
+  link: [
+    { rel: 'canonical', href: 'https://envsync.arnav.tech/installation/secure-peers' },
+  ],
+})
+</script>
+
+<template>
+  <NuxtLink class="back-link" to="/installation">← Installation guides</NuxtLink>
+
+  <div class="subpage-hero">
+    <h1>Secure Peers setup</h1>
+    <p>Set up <strong>secure-peer</strong> mode — designed for cross-team collaboration where no one shares shell access. Uses mTLS for authentication and AGE encryption at rest.</p>
+  </div>
+
+  <section class="panel">
+    <h2>Overview</h2>
+    <p><strong>secure-peer</strong> mode is built for scenarios where multiple people need to share secrets without giving each other SSH access. Every peer must be explicitly invited and approved before syncing.</p>
+    <table>
+      <thead><tr><th>Aspect</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td data-label="Aspect"><strong>Transport</strong></td><td data-label="Detail"><i class="fa-solid fa-shield-halved"></i> HTTPS with mutual TLS (mTLS)</td></tr>
+        <tr><td data-label="Aspect"><strong>Storage</strong></td><td data-label="Detail">AGE encrypted (mandatory)</td></tr>
+        <tr><td data-label="Aspect"><strong>Onboarding</strong></td><td data-label="Detail">Invitation token + explicit approval</td></tr>
+        <tr><td data-label="Aspect"><strong>Authorization</strong></td><td data-label="Detail">Approved / pending / revoked states per peer</td></tr>
+        <tr><td data-label="Aspect"><strong>Best for</strong></td><td data-label="Detail">Team members on the same network, different owners</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Step 1 -->
+  <section class="panel">
+    <h2>Step 1 — Set up the first device</h2>
+    <p>Install env-sync and initialize the first peer. This device becomes the initial trust anchor for the network.</p>
+    <pre><code># install env-sync
+curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
+
+# verify
+env-sync --version
+
+# switch to secure-peer mode
+env-sync mode set secure-peer --yes
+
+# initialize with encryption (generates AGE key pair + TLS identity)
+env-sync init --encrypted
+
+# start the mTLS server (runs in background)
+env-sync serve -d</code></pre>
+
+    <h3>Add your initial secrets</h3>
+    <pre><code>env-sync add OPENAI_API_KEY="sk-abc123xyz"
+env-sync add DATABASE_URL="postgres://user:pass@localhost/db"
+
+# verify everything is running
+env-sync status</code></pre>
+    <p>The first device is now serving secrets over HTTPS with mTLS. No other peer can connect yet — they need an invitation.</p>
+  </section>
+
+  <!-- Step 2 -->
+  <section class="panel">
+    <h2>Step 2 — Invite a second device</h2>
+    <p>The invitation flow has three stages: <strong>invite → request → approve</strong>.</p>
+
+    <h3>2a — Create an invitation (on the first device)</h3>
+    <pre><code># generate a time-limited enrollment token
+env-sync peer invite --expiry 24h</code></pre>
+    <p>This outputs an enrollment token and the hostname of the first device. Share both with the person joining the network (e.g. via a secure channel like Signal or in person).</p>
+
+    <h3>2b — Install and request access (on the new device)</h3>
+    <pre><code># install env-sync
+curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
+
+# switch to secure-peer mode
+env-sync mode set secure-peer --yes
+
+# initialize with encryption
+env-sync init --encrypted
+
+# start the local mTLS server
+env-sync serve -d
+
+# request access using the invitation token
+env-sync peer request first-device.local &lt;TOKEN&gt;</code></pre>
+    <p>The new device sends its TLS certificate and AGE public key to the first device. Its status is now <strong>pending</strong>.</p>
+
+    <h3>2c — Approve the new peer (on the first device)</h3>
+    <pre><code># list pending peer requests
+env-sync peer list
+
+# approve the new device
+env-sync peer approve new-device.local</code></pre>
+    <p>Once approved, the devices exchange TLS certificates and AGE public keys automatically. Both peers can now sync.</p>
+
+    <h3>2d — Exchange keys and sync</h3>
+    <pre><code># on the new device — import the first device's AGE public key
+env-sync key import &lt;FIRST_DEVICE_PUBKEY&gt; first-device.local
+
+# on the first device — import the new device's AGE public key
+env-sync key import &lt;NEW_DEVICE_PUBKEY&gt; new-device.local
+
+# sync from either device
+env-sync sync</code></pre>
+    <p>Secrets are re-encrypted for both recipients. The new device can now decrypt and read all shared secrets.</p>
+  </section>
+
+  <!-- Step 3 -->
+  <section class="panel">
+    <h2>Step 3 — Add more devices</h2>
+    <p>Repeat <strong>Step 2</strong> for each additional peer. Any already-approved device can create invitations:</p>
+    <ol>
+      <li>An approved peer runs <code>env-sync peer invite --expiry 24h</code>.</li>
+      <li>The new device installs, initializes, and runs <code>env-sync peer request</code>.</li>
+      <li>The inviting peer (or any approved peer) runs <code>env-sync peer approve</code>.</li>
+      <li>Exchange AGE public keys and sync.</li>
+    </ol>
+    <pre><code># quick reference for onboarding the Nth device
+# -- on any approved peer --
+env-sync peer invite --expiry 24h
+
+# -- on the new device --
+curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
+env-sync mode set secure-peer --yes
+env-sync init --encrypted
+env-sync serve -d
+env-sync peer request approver.local &lt;TOKEN&gt;
+
+# -- on the approving peer --
+env-sync peer approve new-device.local
+env-sync key import &lt;NEW_DEVICE_PUBKEY&gt; new-device.local
+
+# -- on the new device --
+env-sync key import &lt;APPROVER_PUBKEY&gt; approver.local
+env-sync sync</code></pre>
+    <p>Membership events propagate automatically — peers that were offline during the approval will catch up on the next sync via signed membership events.</p>
+  </section>
+
+  <!-- Verify -->
+  <section class="panel">
+    <h2>Verify your setup</h2>
+    <pre><code># list all known peers and their status
+env-sync peer list
+
+# check trust details for a specific peer
+env-sync peer trust show peer-hostname.local
+
+# view all trusted fingerprints
+env-sync peer trust list
+
+# check sync status
+env-sync status</code></pre>
+  </section>
+
+  <!-- Automate -->
+  <section class="panel">
+    <h2>Automate sync</h2>
+    <pre><code># install cron job (syncs every 30 minutes)
+env-sync cron --install
+
+# auto-load secrets in your shell
+# add to ~/.bashrc or ~/.zshrc:
+eval "$(env-sync load 2>/dev/null)"</code></pre>
+    <p>Make sure <code>env-sync serve -d</code> starts at boot so the mTLS server is always available for incoming sync requests. Consider using your OS service manager:</p>
+    <pre><code># Linux (systemd)
+env-sync service install
+systemctl --user enable env-sync
+
+# macOS (launchd)
+env-sync service install</code></pre>
+  </section>
+
+  <!-- Revoke -->
+  <section class="panel">
+    <h2>Remove a device from the network</h2>
+    <p>When a team member leaves or a device is compromised, revoke their access:</p>
+
+    <h3>Revoke the peer (on any approved device)</h3>
+    <pre><code># revoke access
+env-sync peer revoke departed-device.local
+
+# verify revocation
+env-sync peer list</code></pre>
+    <p>The revoked peer's status changes to <strong>revoked</strong>. A signed membership event is created and propagated to all other peers on the next sync.</p>
+
+    <h3>What happens after revocation</h3>
+    <ul>
+      <li>The revoked device can no longer authenticate via mTLS.</li>
+      <li>New secrets are encrypted only to remaining approved peers — the revoked device cannot decrypt them.</li>
+      <li>Peers that are offline will learn about the revocation when they sync and replay membership events.</li>
+    </ul>
+
+    <h3>On the departing device (optional cleanup)</h3>
+    <pre><code># stop the server and service
+env-sync service uninstall
+env-sync cron --remove
+
+# delete all local data
+rm -rf ~/.config/env-sync
+
+# remove the binary
+sudo rm -f /usr/local/bin/env-sync</code></pre>
+    <p><strong>Important</strong>: After revoking a device, rotate any secrets it had access to. The revoked device may still have a cached copy of previously-synced secrets.</p>
+  </section>
+
+  <section class="cta-banner">
+    <h2>Secure mesh ready</h2>
+    <p>Your peers are now syncing secrets with end-to-end encryption and mutual authentication.</p>
+    <div class="cta-row" style="justify-content:center;">
+      <NuxtLink class="btn btn-primary" to="/usage">Usage guide →</NuxtLink>
+      <NuxtLink class="btn btn-secondary" to="/security">Security deep-dive</NuxtLink>
+    </div>
+  </section>
+</template>
