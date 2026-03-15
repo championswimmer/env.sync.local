@@ -72,6 +72,15 @@ async function startServer() {
     await window.go.main.ServiceMgmtService.StartServer(configuredPort, true)
     toast.success('Server started')
     await status.fetchStatus()
+    if (!status.serverStatus?.running) {
+      for (let attempt = 0; attempt < 4; attempt++) {
+        await new Promise((resolve) => setTimeout(resolve, 250))
+        await status.fetchStatus()
+        if (status.serverStatus?.running) {
+          break
+        }
+      }
+    }
   } catch (e) {
     toast.error('Failed to start server: ' + e)
   }
