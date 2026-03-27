@@ -52,10 +52,17 @@ header {
   gap: 1rem;
 }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
   font-weight: 700;
   color: white;
   font-size: 1.1rem;
   letter-spacing: -0.02em;
+}
+.brand .nav-logo {
+  height: 1.5rem;
+  width: auto;
 }
 nav ul {
   list-style: none;

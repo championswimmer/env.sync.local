@@ -4,7 +4,10 @@
 <template>
   <header>
     <div class="nav">
-      <NuxtLink class="brand" to="/">env-sync</NuxtLink>
+      <NuxtLink class="brand" to="/">
+        <img src="/assets/logo.png" alt="env-sync logo" class="nav-logo" />
+        env-sync
+      </NuxtLink>
       <nav><ul>
         <li class="dropdown"><NuxtLink to="/installation">Install</NuxtLink><ul class="dropdown-menu"><li><NuxtLink to="/download">Download</NuxtLink></li><li><NuxtLink to="/installation/quickstart">Quickstart</NuxtLink></li><li><NuxtLink to="/installation/trusted-peers">Trusted Peers Setup</NuxtLink></li><li><NuxtLink to="/installation/secure-peers">Secure Peers Setup</NuxtLink></li></ul></li>
         <li><NuxtLink to="/usage">Usage</NuxtLink></li>
