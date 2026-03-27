@@ -33,6 +33,16 @@ useHead({
         <NuxtLink class="btn btn-secondary" to="/installation">Get started — it's free</NuxtLink>
         <a class="btn btn-secondary" href="https://github.com/championswimmer/env.sync.local"><i class="fa-brands fa-github"></i> View on GitHub</a>
       </div>
+      <div class="ph-badge-row">
+        <a
+          class="ph-badge-link"
+          href="https://www.producthunt.com/products/env-sync?embed=true&amp;utm_source=badge-featured&amp;utm_medium=badge&amp;utm_campaign=badge-env-sync"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <img class="ph-badge-img" alt="env-sync - sync your .env files easily between devices in home network | Product Hunt" width="250" height="54" src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1108652&amp;theme=dark&amp;t=1774583676449">
+        </a>
+      </div>
     </div>
     <img src="/assets/cover.png" alt="env-sync peer-to-peer secrets synchronization across local machines" />
   </section>
