@@ -30,6 +30,7 @@
           <NuxtLink to="/comparisons/doppler-vs-envsync">vs Doppler</NuxtLink>
           <NuxtLink to="/comparisons/dotenvx-vs-envsync">vs dotenvx</NuxtLink>
           <NuxtLink to="/comparisons/sops-vs-envsync">vs SOPS</NuxtLink>
+          <NuxtLink to="/comparisons/syncthing-vs-envsync">vs Syncthing</NuxtLink>
         </div>
         <div>
           <h4>Resources</h4>
