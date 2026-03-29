@@ -2,16 +2,16 @@
 useHead({
   title: 'Comparisons | env-sync vs alternatives',
   meta: [
-    { name: 'description', content: 'Compare env-sync with dotenvx, SOPS, HashiCorp Vault, Infisical, and Doppler — see where peer-to-peer LAN sync fits in your stack.' },
-    { name: 'keywords', content: 'env-sync comparison, Vault alternative, Infisical alternative, Doppler alternative, dotenvx alternative, SOPS alternative, secrets management comparison' },
-    { property: 'og:title', content: 'env-sync vs alternatives | Vault, Infisical, Doppler, dotenvx, SOPS' },
-    { property: 'og:description', content: 'See how env-sync compares to HashiCorp Vault, Infisical, Doppler, dotenvx, and SOPS. Peer-to-peer LAN sync vs centralized secrets platforms.' },
+    { name: 'description', content: 'Compare env-sync with dotenvx, SOPS, HashiCorp Vault, Infisical, Doppler, and Syncthing — see where peer-to-peer LAN sync fits in your stack.' },
+    { name: 'keywords', content: 'env-sync comparison, Vault alternative, Infisical alternative, Doppler alternative, dotenvx alternative, SOPS alternative, Syncthing alternative, secrets management comparison' },
+    { property: 'og:title', content: 'env-sync vs alternatives | Vault, Infisical, Doppler, dotenvx, SOPS, Syncthing' },
+    { property: 'og:description', content: 'See how env-sync compares to HashiCorp Vault, Infisical, Doppler, dotenvx, SOPS, and Syncthing. Peer-to-peer LAN sync vs centralized secrets platforms and general file sync.' },
     { property: 'og:type', content: 'article' },
     { property: 'og:url', content: 'https://envsync.arnav.tech/comparisons' },
     { property: 'og:image', content: 'https://envsync.arnav.tech/assets/cover.png' },
     { name: 'twitter:card', content: 'summary_large_image' },
-    { name: 'twitter:title', content: 'env-sync vs alternatives | Vault, Infisical, Doppler, dotenvx, SOPS' },
-    { name: 'twitter:description', content: 'See how env-sync compares to HashiCorp Vault, Infisical, Doppler, dotenvx, and SOPS for secrets management.' },
+    { name: 'twitter:title', content: 'env-sync vs alternatives | Vault, Infisical, Doppler, dotenvx, SOPS, Syncthing' },
+    { name: 'twitter:description', content: 'See how env-sync compares to HashiCorp Vault, Infisical, Doppler, dotenvx, SOPS, and Syncthing for secrets management.' },
     { name: 'twitter:image', content: 'https://envsync.arnav.tech/assets/cover.png' },
   ],
   link: [
@@ -37,6 +37,7 @@ useHead({
         <tr><td data-label="Tool"><NuxtLink to="/comparisons/vault-vs-envsync">HashiCorp Vault</NuxtLink></td><td data-label="Architecture">Centralized server</td><td data-label="Primary use case">Enterprise secrets, dynamic creds, PKI</td><td data-label="LAN / offline">❌ Needs server</td><td data-label="Pricing">OSS free / Enterprise paid</td></tr>
         <tr><td data-label="Tool"><NuxtLink to="/comparisons/infisical-vs-envsync">Infisical</NuxtLink></td><td data-label="Architecture">Centralized platform</td><td data-label="Primary use case">Secrets management, RBAC, PKI</td><td data-label="LAN / offline">❌ Needs server</td><td data-label="Pricing">OSS free / Cloud paid</td></tr>
         <tr><td data-label="Tool"><NuxtLink to="/comparisons/doppler-vs-envsync">Doppler</NuxtLink></td><td data-label="Architecture">Cloud SaaS</td><td data-label="Primary use case">Centralized config &amp; secret delivery</td><td data-label="LAN / offline">❌ Cloud-dependent</td><td data-label="Pricing">Free tier / Paid plans</td></tr>
+        <tr><td data-label="Tool"><NuxtLink to="/comparisons/syncthing-vs-envsync">Syncthing</NuxtLink></td><td data-label="Architecture">Peer-to-peer</td><td data-label="Primary use case">General-purpose file &amp; folder sync</td><td data-label="LAN / offline">✅ LAN + internet</td><td data-label="Pricing">Free &amp; open source</td></tr>
       </tbody>
     </table>
   </section>
@@ -70,6 +71,11 @@ useHead({
       <div class="vs-badge">vs</div>
       <h2><NuxtLink to="/comparisons/doppler-vs-envsync">Doppler vs env-sync</NuxtLink></h2>
       <p>Cloud-centric centralized secrets operations with integrations versus offline/LAN-first synchronization with explicit trust modes.</p>
+    </article>
+    <article class="panel comparison-card">
+      <div class="vs-badge">vs</div>
+      <h2><NuxtLink to="/comparisons/syncthing-vs-envsync">Syncthing vs env-sync</NuxtLink></h2>
+      <p>General-purpose peer-to-peer file synchronization versus secrets-focused LAN .env sync with per-key merging and at-rest encryption.</p>
     </article>
   </div>
 

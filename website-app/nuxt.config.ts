@@ -49,6 +49,7 @@ export default defineNuxtConfig({
         '/comparisons/dotenvx-vs-envsync',
         '/comparisons/infisical-vs-envsync',
         '/comparisons/sops-vs-envsync',
+        '/comparisons/syncthing-vs-envsync',
         '/comparisons/vault-vs-envsync',
         '/download',
         '/installation',
