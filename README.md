@@ -85,11 +85,11 @@ env-sync mode set secure-peer
 # Create invitation
 env-sync peer invite --expires 1h
 
-# On new machine, request access
-env-sync peer request-access --to hostname.local --token <token>
+# On new machine, request access (peer IDs are user@host)
+env-sync peer request alice@hostname.local <token>
 
 # Approve from existing peer
-env-sync peer approve new-host.local
+env-sync peer approve bob@new-host.local
 ```
 
 See [SECURITY-MODES.md](./docs/SECURITY-MODES.md) for detailed security analysis and threat models.
@@ -113,9 +113,9 @@ eval "$(env-sync load)"
 env-sync mode get
 env-sync mode set secure-peer
 
-# Peer management (secure-peer mode)
+# Peer management (secure-peer mode, peer IDs are user@host)
 env-sync peer list
-env-sync peer approve hostname.local
+env-sync peer approve bob@hostname.local
 
 # Service management
 env-sync serve -d        # Start background service
@@ -167,7 +167,7 @@ Machine A                      Machine B
 ┌──────────┐                   ┌──────────┐
 │  mDNS    │◄────discovery────►│  mDNS    │
 │  (port   │                   │  (port   │
-│  5739)   │                   │  5739)   │
+│  5739*)  │                   │  5739*)  │
 └────┬─────┘                   └────┬─────┘
      │                              │
 ┌────▼─────┐                   ┌────▼─────┐
@@ -181,6 +181,11 @@ Machine A                      Machine B
 │   .env   │                   │   .env   │
 └──────────┘                   └──────────┘
 ```
+(* per-user port since v4 — see Multi-user note below)
+
+**Multi-user (v4+)**: peer IDs are `user@host`; each OS user gets their own
+port (default 5739, overridable, auto-bumped unless pinned); `serve -p` /
+`ENV_SYNC_PORT` pins an explicit port that is never bumped.
 
 ## File Locations
 

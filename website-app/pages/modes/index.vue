@@ -56,6 +56,7 @@ useHead({
       <li>Compare metadata versions and timestamps.</li>
       <li>Merge changes and write locally with automatic backup.</li>
     </ol>
+    <p>Since v4, peers are identified per-user (<code>user@host</code>), so two OS users on one machine are distinct peers.</p>
     <pre><code>env-sync mode set trusted-owner-ssh</code></pre>
   </section>
 
@@ -71,6 +72,7 @@ useHead({
       <li>Re-encrypt to all known recipients and save with backup.</li>
       <li>Replay signed membership events for offline catch-up.</li>
     </ol>
+    <p>Since v4, approvals and the peer registry use per-user <code>user@host</code> peer IDs; endpoints accept an optional <code>:port</code>.</p>
     <pre><code>env-sync mode set secure-peer</code></pre>
   </section>
 

@@ -57,11 +57,12 @@ env-sync mode set trusted-owner-ssh --prune-old-material --yes</code></pre>
     <h2>Peer management</h2>
     <p><strong>secure-peer mode</strong> — invitation-based access with explicit approval:</p>
     <pre><code>env-sync peer invite --expires 1h
-env-sync peer request-access --to hostname.local --token &lt;token&gt;
+env-sync peer request alice@hostname.local &lt;token&gt;
 env-sync peer list --pending
-env-sync peer approve new-host.local
-env-sync peer revoke compromised-host.local
-env-sync peer trust show hostname.local</code></pre>
+env-sync peer approve bob@new-host.local
+env-sync peer revoke mallory@compromised-host.local
+env-sync peer trust show alice@hostname.local</code></pre>
+    <p>Peer IDs are per-user (<code>user@host</code>). Endpoints also accept an explicit port: <code>alice@hostname.local:5740</code>.</p>
     <p><strong>trusted-owner mode</strong> — any SSH-reachable peer can sync without approval.</p>
   </section>
 
@@ -76,8 +77,8 @@ eval "$(env-sync load 2>/dev/null)"
 
 # sync with peers
 env-sync sync
-env-sync sync hostname.local
-env-sync sync --force-pull hostname.local
+env-sync sync alice@hostname.local
+env-sync sync --force-pull alice@hostname.local
 env-sync sync --dry-run</code></pre>
     <p><code>--force-pull</code> fully overwrites local secrets from the selected host. A backup is created first.</p>
   </section>
@@ -109,7 +110,10 @@ tail -f ~/.config/env-sync/logs/env-sync.log
 env-sync sync --verbose
 
 # verify connectivity
-env-sync discover</code></pre>
+env-sync discover
+
+env-sync status   # shows user@host peer IDs
+# each OS user has their own server port (~/.config/env-sync/port)</code></pre>
   </section>
 
   <section class="cta-banner">

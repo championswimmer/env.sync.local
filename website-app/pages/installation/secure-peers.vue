@@ -61,6 +61,7 @@ env-sync init --encrypted
 
 # start the mTLS server (runs in background)
 env-sync serve -d</code></pre>
+    <p>Each OS user runs their own server; a second user auto-bumps to a free per-user port (persisted in <code>~/.config/env-sync/port</code>). Use <code>serve -p</code> to pin an explicit port.</p>
 
     <h3>Add your initial secrets</h3>
     <pre><code>env-sync add OPENAI_API_KEY="sk-abc123xyz"
@@ -79,7 +80,7 @@ env-sync status</code></pre>
     <h3>2a — Create an invitation (on the first device)</h3>
     <pre><code># generate a time-limited enrollment token
 env-sync peer invite --expiry 24h</code></pre>
-    <p>This outputs an enrollment token and the hostname of the first device. Share both with the person joining the network (e.g. via a secure channel like Signal or in person).</p>
+    <p>This outputs an enrollment token and the peer ID of the first device (<code>user@host</code>, e.g. <code>alice@first-device</code>). Share both with the person joining the network (e.g. via a secure channel like Signal or in person).</p>
 
     <h3>2b — Install and request access (on the new device)</h3>
     <pre><code># install env-sync
@@ -95,7 +96,7 @@ env-sync init --encrypted
 env-sync serve -d
 
 # request access using the invitation token
-env-sync peer request first-device.local &lt;TOKEN&gt;</code></pre>
+env-sync peer request alice@first-device.local &lt;TOKEN&gt;</code></pre>
     <p>The new device sends its TLS certificate and AGE public key to the first device. Its status is now <strong>pending</strong>.</p>
 
     <h3>2c — Approve the new peer (on the first device)</h3>
@@ -103,15 +104,15 @@ env-sync peer request first-device.local &lt;TOKEN&gt;</code></pre>
 env-sync peer list
 
 # approve the new device
-env-sync peer approve new-device.local</code></pre>
+env-sync peer approve bob@new-device.local</code></pre>
     <p>Once approved, the devices exchange TLS certificates and AGE public keys automatically. Both peers can now sync.</p>
 
     <h3>2d — Exchange keys and sync</h3>
     <pre><code># on the new device — import the first device's AGE public key
-env-sync key import &lt;FIRST_DEVICE_PUBKEY&gt; first-device.local
+env-sync key import &lt;FIRST_DEVICE_PUBKEY&gt; alice@first-device.local
 
 # on the first device — import the new device's AGE public key
-env-sync key import &lt;NEW_DEVICE_PUBKEY&gt; new-device.local
+env-sync key import &lt;NEW_DEVICE_PUBKEY&gt; bob@new-device.local
 
 # sync from either device
 env-sync sync</code></pre>
@@ -137,14 +138,14 @@ curl -fsSL https://envsync.arnav.tech/install.sh | sudo bash
 env-sync mode set secure-peer --yes
 env-sync init --encrypted
 env-sync serve -d
-env-sync peer request approver.local &lt;TOKEN&gt;
+env-sync peer request alice@approver.local &lt;TOKEN&gt;
 
 # -- on the approving peer --
-env-sync peer approve new-device.local
-env-sync key import &lt;NEW_DEVICE_PUBKEY&gt; new-device.local
+env-sync peer approve bob@new-device.local
+env-sync key import &lt;NEW_DEVICE_PUBKEY&gt; bob@new-device.local
 
 # -- on the new device --
-env-sync key import &lt;APPROVER_PUBKEY&gt; approver.local
+env-sync key import &lt;APPROVER_PUBKEY&gt; alice@approver.local
 env-sync sync</code></pre>
     <p>Membership events propagate automatically — peers that were offline during the approval will catch up on the next sync via signed membership events.</p>
   </section>
@@ -156,7 +157,7 @@ env-sync sync</code></pre>
 env-sync peer list
 
 # check trust details for a specific peer
-env-sync peer trust show peer-hostname.local
+env-sync peer trust show alice@peer-hostname.local
 
 # view all trusted fingerprints
 env-sync peer trust list
@@ -190,7 +191,7 @@ env-sync service install</code></pre>
 
     <h3>Revoke the peer (on any approved device)</h3>
     <pre><code># revoke access
-env-sync peer revoke departed-device.local
+env-sync peer revoke bob@departed-device.local
 
 # verify revocation
 env-sync peer list</code></pre>

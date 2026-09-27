@@ -96,6 +96,7 @@ env-sync discover
 # sync secrets from the first device
 env-sync sync</code></pre>
     <p>The new machine will discover the first device via mDNS, fetch secrets over SCP, and merge them locally. Both machines now have identical secrets.</p>
+    <p>Since v4, peers are identified per-user (<code>user@host</code>), so two OS users on the same machine are distinct peers with per-user ports. For SSH use <code>ssh user@host</code>, where <code>user</code> is the remote OS login (this selects the OS user on shared machines).</p>
   </section>
 
   <!-- Step 3 -->
@@ -131,8 +132,10 @@ env-sync init --encrypted</code></pre>
 env-sync key show
 # outputs: age1xxxxxxxxxx...
 
-# on device B — import device A's key
-env-sync key import age1xxxxxxxxxx... deviceA.local
+# on device B — import device A's key (peer IDs are user@host)
+env-sync key import age1xxxxxxxxxx... alice@deviceA.local
+
+# bare hostnames still work for single-user machines, but user@host is canonical
 
 # repeat in both directions for every pair</code></pre>
 

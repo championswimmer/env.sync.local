@@ -30,7 +30,7 @@ Each mode makes different security trade-offs. Choose based on your actual trust
 ### Security Characteristics
 
 - **Storage**: Secrets stored in plaintext on disk
-- **Transport**: Unencrypted HTTP (port 5739)
+- **Transport**: Unencrypted HTTP (per-user port, default 5739)
 - **Authentication**: None
 - **Encryption**: None
 
@@ -74,7 +74,7 @@ env-sync serve -d
 │                         ⚠️  NO SECURITY                      │
 └─────────────────────────────────────────────────────────────┘
 
-     ┌──────────┐         HTTP (port 5739)         ┌──────────┐
+     ┌──────────┐ HTTP (per-user port, dflt 5739)  ┌──────────┐
      │          │◄─────────────────────────────────►│          │
      │ Machine A│         Plaintext Transfer        │ Machine B│
      │          │                                   │          │
@@ -338,7 +338,7 @@ env-sync init --encrypted
 env-sync discover
 
 # Request access on new machine
-env-sync key request-access --trigger hostname.local
+env-sync key request-access --trigger alice@hostname.local
 ```
 
 ### Security Considerations
@@ -386,14 +386,14 @@ This mode uses **mTLS** (mutual TLS) where both client and server present certif
 
 #### Identity and Trust Material
 
-Each host has:
+Each OS user on each host has (v4: identity is per-user `user@host`):
 
-1. **Transport Identity**: Keypair + self-signed certificate for mTLS
+1. **Transport Identity**: Keypair + self-signed certificate for mTLS (CN is the peer ID, so two users on one machine have distinct identities)
 2. **AGE Keypair**: For at-rest secret encryption
 3. **Peer Registry**: Database of known peers and their authorization status
 
 ```
-~/.config/env-sync/
+~/.config/env-sync/              # per-OS-user (~ = each user's home)
 ├── keys/
 │   ├── transport_key          # mTLS private key
 │   ├── transport_cert.pem     # Self-signed certificate
@@ -422,14 +422,14 @@ This avoids global trust and blast radius issues.
 ```bash
 # On existing trusted peer
 env-sync peer invite --expires 1h
-# Outputs: token, hostname, fingerprint
+# Outputs: token, peer ID (user@host), fingerprint
 
 # On new machine
 env-sync mode set secure-peer
-env-sync peer request-access --to hostname.local --token <token>
+env-sync peer request alice@hostname.local <token>
 
 # Back on existing peer
-env-sync peer approve new-host.local
+env-sync peer approve bob@new-host.local
 ```
 
 #### Membership Propagation
@@ -447,9 +447,9 @@ Once approved by one trusted peer, a new host is automatically learned by all ot
 # View pending requests
 env-sync peer list --pending
 
-# Approve or revoke
-env-sync peer approve hostname.local
-env-sync peer revoke hostname.local
+# Approve or revoke (peer IDs are user@host)
+env-sync peer approve alice@hostname.local
+env-sync peer revoke bob@hostname.local
 
 # View authorization status
 env-sync peer list
@@ -555,7 +555,7 @@ Phase 1: Create Invitation
 │ $ env-sync peer invite --expires 1h                                │
 │                                                                     │
 │ Token: abc123def456                                                │
-│ Host: alice-laptop.local                                           │
+│ Peer: alice@alice-laptop (user@host)                               │
 │ Fingerprint: SHA256:xyz789...                                      │
 │ Expires: 2025-02-16 16:30:00                                       │
 └─────────────────────────────────────────────────────────────────────┘
@@ -568,10 +568,7 @@ Phase 1: Create Invitation
 │ On Machine D (Dave's laptop):                                       │
 │                                                                     │
 │ $ env-sync mode set secure-peer                                    │
-│ $ env-sync peer request-access                                     │
-│     --to alice-laptop.local                                        │
-│     --token abc123def456                                           │
-│                                                                     │
+│ $ env-sync peer request alice@alice-laptop abc123def456            │
 │ D generates:                                                        │
 │ - Transport identity (cert/key)                                    │
 │ - AGE keypair                                                      │
@@ -587,10 +584,10 @@ Phase 1: Create Invitation
 │ $ env-sync peer list --pending                                     │
 │                                                                     │
 │ Pending peers:                                                      │
-│   • dave-laptop.local (requested: 2025-02-16 15:45)               │
+│ • dave@dave-laptop (2025-02-16 15:45)                             │
 │                                                                     │
-│ $ env-sync peer approve dave-laptop.local                          │
-│ ✓ Approved dave-laptop.local                                       │
+│ $ env-sync peer approve dave@dave-laptop                           │
+│ ✓ Approved dave@dave-laptop                                        │
 └─────────────────────────────────────────────────────────────────────┘
                     │
                     │ Membership event created
@@ -672,7 +669,7 @@ Step 1: Revoke C
 ┌─────────────────────────────────────────────────────────────────────┐
 │ Any approved peer can revoke:                                       │
 │                                                                     │
-│ $ env-sync peer revoke charlie-desktop.local                       │
+│ $ env-sync peer revoke charlie@charlie-desktop.local               │
 │                                                                     │
 │ Alice revokes Charlie:                                              │
 │ - Updates local registry (Charlie → revoked)                       │
@@ -739,13 +736,13 @@ env-sync mode set secure-peer
 env-sync peer invite --expires 30m --description "John's laptop"
 
 # Request access
-env-sync peer request-access --to hostname.local --token <token>
+env-sync peer request alice@hostname.local <token>
 
 # Manage peers
 env-sync peer list
-env-sync peer approve hostname.local
-env-sync peer revoke hostname.local
-env-sync peer trust show hostname.local
+env-sync peer approve bob@hostname.local
+env-sync peer revoke mallory@hostname.local
+env-sync peer trust show alice@hostname.local
 
 # Sync (uses mTLS)
 env-sync

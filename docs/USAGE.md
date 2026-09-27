@@ -94,8 +94,8 @@ On the new machine:
 # 1. Set mode to secure-peer
 env-sync mode set secure-peer
 
-# 2. Request access using the token from invitation
-env-sync peer request-access --to hostname.local --token <token>
+# 2. Request access using the token from invitation (peer IDs are user@host)
+env-sync peer request alice@hostname.local <token>
 
 # 3. Wait for approval, then sync
 env-sync
@@ -107,11 +107,11 @@ env-sync
 # List pending requests
 env-sync peer list --pending
 
-# Approve a peer
-env-sync peer approve new-host.local
+# Approve a peer (peer IDs are user@host)
+env-sync peer approve bob@new-host.local
 
 # Revoke a peer's access
-env-sync peer revoke compromised-host.local
+env-sync peer revoke mallory@compromised-host.local
 
 # List all peers
 env-sync peer list
@@ -120,8 +120,8 @@ env-sync peer list
 #### View Peer Trust Information
 
 ```bash
-# Show trust details for a specific peer
-env-sync peer trust show hostname.local
+# Show trust details for a specific peer (peer ID: user@host)
+env-sync peer trust show alice@hostname.local
 
 # List all trusted fingerprints
 env-sync peer trust list
@@ -138,6 +138,16 @@ env-sync discover
 # Collect public keys from discovered peers
 env-sync discover --collect-keys
 ```
+
+### Multiple Users on One Machine (v4.0+)
+
+Peer IDs are per-user `user@host` (username + hostname, overridable via
+`ENV_SYNC_USER` / `ENV_SYNC_HOSTNAME`). Each OS user gets their own port:
+default `5739`, else `ENV_SYNC_PORT`, else `~/.config/env-sync/port`
+(auto-bumped when taken). `serve -p/--port` or `ENV_SYNC_PORT` pins an
+explicit port that is never bumped. Endpoints accept `host`, `host:port`, or
+`user@host[:port]`; `user@host` auto-resolves the right port when reachable.
+Legacy bare-hostname peers keep working via fallback.
 
 ## Secret Management
 
@@ -222,8 +232,8 @@ env-sync sync
 ### Sync from Specific Host
 
 ```bash
-# Sync from a specific peer only
-env-sync sync hostname.local
+# Sync from a specific peer only (peer IDs are user@host; port optional)
+env-sync sync alice@hostname.local
 ```
 
 ### Force Pull
@@ -231,8 +241,8 @@ env-sync sync hostname.local
 Forcefully overwrite local secrets with those from a specific host:
 
 ```bash
-# Force pull from specific host
-env-sync sync --force-pull hostname.local
+# Force pull from specific peer
+env-sync sync --force-pull alice@hostname.local
 ```
 
 **Use when:**
@@ -352,7 +362,7 @@ env-sync restore 3
 
 ```bash
 # In trusted-owner-ssh mode
-env-sync key request-access --trigger hostname.local
+env-sync key request-access --trigger alice@hostname.local
 
 # In secure-peer mode
 # Ensure you've been approved by a trusted peer
@@ -362,11 +372,11 @@ env-sync peer list
 ### SSH Connection Fails (Trusted-Owner Mode)
 
 ```bash
-# Test SSH connectivity
-ssh -v hostname.local
+# Test SSH connectivity (user = remote OS login)
+ssh -v user@hostname.local
 
 # Copy SSH key again
-ssh-copy-id hostname.local
+ssh-copy-id user@hostname.local
 ```
 
 ### Sync Not Working
@@ -385,8 +395,8 @@ env-sync discover
 ### Certificate/Trust Issues (Secure-Peer Mode)
 
 ```bash
-# View peer trust status
-env-sync peer trust show hostname.local
+# View peer trust status (peer ID: user@host)
+env-sync peer trust show alice@hostname.local
 
 # Check for pending approvals
 env-sync peer list --pending
