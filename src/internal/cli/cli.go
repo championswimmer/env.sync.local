@@ -29,6 +29,7 @@ import (
 	syncer "envsync/internal/sync"
 	mtlstransport "envsync/internal/transport/mtls"
 	sshtransport "envsync/internal/transport/ssh"
+	"envsync/internal/update"
 )
 
 func Run(argv []string) int {
@@ -39,6 +40,22 @@ func Run(argv []string) int {
 
 	// Handle global --verbose flag before routing to subcommands
 	args = handleGlobalFlags(args)
+
+	// Hidden internal arg executed in a detached background process.
+	if len(args) > 0 && args[0] == "__check-update-internal" {
+		if err := update.RunCheckNow(); err != nil {
+			return 1
+		}
+		return 0
+	}
+
+	// Non-blocking background check + synchronous cached notice for every invocation.
+	// The update command shows its own live version info, so skip the cached
+	// notice there to avoid printing stale info on top of fresh results.
+	update.TriggerBackgroundCheck()
+	if len(args) == 0 || (args[0] != "update" && args[0] != "upgrade" && args[0] != "u") {
+		update.MaybeShowUpdateNotice(args)
+	}
 
 	if len(args) == 0 {
 		return runSync(args, "env-sync sync")
@@ -102,6 +119,8 @@ func Run(argv []string) int {
 		return runPath(args)
 	case "service", "svc":
 		return runServiceManagement(args)
+	case "update", "upgrade", "u":
+		return update.RunUpdate(args)
 	case "help", "--help", "-h":
 		showHelp()
 		return 0
@@ -192,6 +211,13 @@ Commands:
   path [options]           Show env-sync file paths
   cron [options]           Setup periodic sync cron job
   service [subcommand]     Manage background service
+  update [options]         Check for updates and upgrade env-sync
+    Options:
+      --check              Check for newer version without installing
+      --yes, -y            Skip confirmation prompt
+      --user               Install to ~/.local (no sudo)
+      --gui / --all / --gui-only  Passed through to installer
+      --dry-run            Show what would be done
   help                     Show this help
 
 Examples:
@@ -200,6 +226,7 @@ Examples:
   env-sync peer invite                  # Create peer enrollment invite
   env-sync serve -d                     # Start server as daemon
   env-sync status                       # Show status
+  env-sync update --check           # Check if a newer version exists
 
 `)
 }
