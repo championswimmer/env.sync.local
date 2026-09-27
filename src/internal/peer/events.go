@@ -153,7 +153,8 @@ func eventDigest(event *MembershipEvent) []byte {
 // Events are applied in order: approve adds/updates peers, revoke revokes them.
 // When we receive an approval event for ourselves, we also add the sponsor (approver) to our registry.
 func ApplyEvents(reg *Registry, log *MembershipLog, lastApplied uint64) (uint64, error) {
-	hostname := secrets.GetHostname()
+	// Per-user peer ID: two OS users on one machine have distinct IDs.
+	hostname := secrets.LocalPeerID()
 
 	for _, event := range log.Events {
 		if event.EventID <= lastApplied {

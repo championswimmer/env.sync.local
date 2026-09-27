@@ -248,7 +248,7 @@ env.sync.local/
 ### Configuration Constants (config.go)
 
 ```go
-ENV_SYNC_VERSION = "3.0.0"
+ENV_SYNC_VERSION = "4.0.0"
 ENV_SYNC_PORT = "5739"
 CONFIG_DIR = "~/.config/env-sync"
 SECRETS_FILE = CONFIG_DIR + "/.secrets.env"

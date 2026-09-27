@@ -65,15 +65,24 @@ func Run(opts Options) error {
 	maybeReencryptLocal()
 
 	if opts.TargetHost != "" {
+		ep := resolveEndpoint(opts.TargetHost)
+		if ep.IsSelf() {
+			logging.Log("INFO", "Target is self, nothing to sync")
+			return nil
+		}
+		dial := ep.SSHDial()
+		if opts.InsecureHTTP {
+			dial = ep.Dial("")
+		}
 		if !opts.InsecureHTTP {
-			if err := testSSHFunc(opts.TargetHost); err != nil {
-				logging.Log("ERROR", "Cannot SSH to "+opts.TargetHost)
+			if err := testSSHFunc(dial); err != nil {
+				logging.Log("ERROR", "Cannot SSH to "+dial)
 				logging.Log("INFO", "Ensure SSH keys are set up, or switch mode: env-sync mode set dev-plaintext-http")
 				return err
 			}
-			cachePeerPubkey(opts.TargetHost)
+			cachePeerPubkeyFor(ep)
 		}
-		return syncFromHost(opts.TargetHost, opts.InsecureHTTP, opts.ForcePull)
+		return syncFromHost(dial, opts.InsecureHTTP, opts.ForcePull)
 	}
 
 	if opts.AllPeers {
@@ -84,16 +93,20 @@ func Run(opts Options) error {
 			return errors.New("no peers")
 		}
 		success := 0
-		for _, p := range peers {
-			if p == secrets.GetHostname() {
+		eps := resolveEndpoints(peers)
+		for i := range peers {
+			ep := eps[i]
+			if ep.IsSelf() {
 				continue
 			}
+			dial := ep.Dial("")
 			if !opts.InsecureHTTP {
-				if err := testSSHFunc(p); err != nil {
+				dial = ep.SSHDial()
+				if err := testSSHFunc(dial); err != nil {
 					continue
 				}
 			}
-			if err := syncFromHost(p, opts.InsecureHTTP, opts.ForcePull); err == nil {
+			if err := syncFromHost(dial, opts.InsecureHTTP, opts.ForcePull); err == nil {
 				success++
 			}
 		}
@@ -125,9 +138,8 @@ func Run(opts Options) error {
 func runSecurePeerSync(opts Options) error {
 	logging.Log("INFO", "Syncing in secure-peer mode (mTLS)...")
 
-	// Ensure local identity exists
-	hostname := secrets.GetHostname()
-	if _, err := identity.EnsureIdentity(hostname); err != nil {
+	// Ensure local identity exists (per-user "user@host" CN).
+	if _, err := identity.EnsureIdentity(secrets.LocalPeerID()); err != nil {
 		return fmt.Errorf("failed to ensure transport identity: %w", err)
 	}
 
@@ -147,13 +159,17 @@ func runSecurePeerSync(opts Options) error {
 	}
 
 	// Sync membership events from all discovered peers
-	// This helps us learn about other peers and their trust relationships
-	for _, p := range peers {
-		if p == hostname {
+	// This helps us learn about other peers and their trust relationships.
+	// One shared discovery pass resolves per-user ports (two users on one
+	// host advertise different ports).
+	eps := resolveEndpoints(peers)
+	for i, p := range peers {
+		ep := eps[i]
+		if ep.IsSelf() {
 			continue
 		}
 		// Try to sync from any peer - the server will reject if we're not authorized
-		if err := syncMembershipEvents(p, ""); err != nil {
+		if err := syncMembershipEvents(ep.Dial(""), ep.PeerID); err != nil {
 			logging.Log("DEBUG", fmt.Sprintf("Failed to sync membership events from %s: %v", p, err))
 		}
 	}
@@ -170,19 +186,21 @@ func runSecurePeerSync(opts Options) error {
 	var newestHost string
 	var newestTime time.Time
 
-	for _, p := range peers {
-		if p == hostname {
+	for i, p := range peers {
+		ep := eps[i]
+		if ep.IsSelf() {
 			continue
 		}
 
 		// Get peer info from registry if available
-		var peerID string
-		registered, _ := reg.GetPeerByHostname(p)
-		if registered != nil {
+		peerID := ep.PeerID
+		if registered, err := reg.GetPeer(ep.PeerID); err == nil {
+			peerID = registered.ID
+		} else if registered, err := reg.GetPeerByHostname(ep.Host); err == nil {
 			peerID = registered.ID
 		}
 
-		data, err := mtlstransport.FetchSecrets(p, peerID)
+		data, err := mtlstransport.FetchSecrets(ep.Dial(""), peerID)
 		if err != nil {
 			logging.Log("DEBUG", fmt.Sprintf("Failed to fetch secrets from %s: %v", p, err))
 			continue
@@ -211,7 +229,7 @@ func runSecurePeerSync(opts Options) error {
 			logging.Log("INFO", "Cannot decrypt secrets from "+p+", requesting re-encryption...")
 			agePubkey := keys.GetLocalPubkey()
 			if agePubkey != "" && peerID != "" {
-				if err := mtlstransport.RequestReencrypt(p, peerID, agePubkey); err != nil {
+				if err := mtlstransport.RequestReencrypt(ep.Dial(""), peerID, agePubkey); err != nil {
 					logging.Log("DEBUG", "Re-encryption request failed: "+err.Error())
 				}
 			}
@@ -360,6 +378,71 @@ func discoverPeers(useHTTP bool) ([]string, error) {
 	return discovery.Discover(opts)
 }
 
+// resolveEndpoint parses a peer name ("host", "host:port",
+// "user@host[:port]") into an Endpoint and fills in the discovered
+// service port when the name did not carry one explicitly.
+// NOTE: single-peer lookup does a fresh discovery pass; for loops over
+// many peers prefer resolveEndpoints (one shared pass).
+func resolveEndpoint(name string) secrets.Endpoint {
+	ep := secrets.ParseEndpoint(name)
+	if ep.Port != "" {
+		return ep
+	}
+	if port := discovery.PortForPeer(ep.PeerID); port != "" {
+		ep.Port = port
+	}
+	return ep
+}
+
+// resolveEndpoints parses many peer names with a single shared discovery
+// pass for port resolution (avoids one mDNS round-trip per peer).
+func resolveEndpoints(names []string) []secrets.Endpoint {
+	eps := make([]secrets.Endpoint, 0, len(names))
+	need := []string{}
+	for _, n := range names {
+		ep := secrets.ParseEndpoint(n)
+		eps = append(eps, ep)
+		if ep.Port == "" {
+			need = append(need, n)
+		}
+	}
+	if len(need) == 0 {
+		return eps
+	}
+	ports := discovery.PortMap(need)
+	for i := range eps {
+		if eps[i].Port == "" {
+			if port, ok := ports[names[i]]; ok {
+				eps[i].Port = port
+			}
+		}
+	}
+	return eps
+}
+
+// cachePeerPubkeyFor fetches a peer's AGE pubkey over SSH and caches it
+// under the canonical peer ID.
+func cachePeerPubkeyFor(ep secrets.Endpoint) {
+	pubkey := discovery.FetchPubkey(ep.SSHDial())
+	if pubkey == "" {
+		logging.Log("WARN", "Could not fetch public key from "+ep.Raw)
+		return
+	}
+	if !keys.ValidatePubkey(pubkey) {
+		logging.Log("WARN", "Invalid public key fetched from "+ep.Raw)
+		return
+	}
+	id := ep.PeerID
+	if id == "" {
+		id = ep.Host
+	}
+	if err := keys.CachePeerPubkey(id, pubkey); err != nil {
+		logging.Log("WARN", "Failed to cache public key from "+ep.Raw+": "+err.Error())
+		return
+	}
+	logging.Log("SUCCESS", "Cached public key from "+ep.Raw)
+}
+
 func fetchFromHost(host string, useHTTP bool) (string, error) {
 	tmpFile, err := os.CreateTemp("", "env-sync-remote")
 	if err != nil {
@@ -475,17 +558,23 @@ func findNewestPeer(useHTTP bool) (string, error) {
 		return "", err
 	}
 
-	for _, peer := range peers {
-		if peer == secrets.GetHostname() {
+	eps := resolveEndpoints(peers)
+	for i := range peers {
+		peer := peers[i]
+		ep := eps[i]
+		if ep.IsSelf() {
 			continue
 		}
+		// Port-aware dial: two users on one host advertise different ports.
+		dial := ep.Dial("")
 		if !useHTTP {
-			if err := testSSHFunc(peer); err != nil {
-				logging.Log("DEBUG", "Cannot SSH to "+peer+" (skipping)")
+			dial = ep.SSHDial()
+			if err := testSSHFunc(dial); err != nil {
+				logging.Log("DEBUG", "Cannot SSH to "+dial+" (skipping)")
 				continue
 			}
 		}
-		remoteFile, err := fetchRemoteWithRegistration(peer, useHTTP)
+		remoteFile, err := fetchRemoteWithRegistration(dial, useHTTP)
 		if err != nil {
 			continue
 		}
@@ -586,10 +675,12 @@ func ensureRegisteredWithPeer(host string) error {
 	if localPubkey == "" {
 		return errors.New("no local key found - generate with: env-sync init --encrypted")
 	}
-	localHostname := secrets.GetHostname()
+	// Register under the per-user peer ID so two OS users on one machine
+	// don't overwrite each other's cached keys on the peer.
+	localPeerID := secrets.LocalPeerID()
 
 	logging.Log("INFO", "Registering public key with "+host+" and triggering re-encryption...")
-	if err := sshtransport.RegisterPubkeyWithPeer(host, localPubkey, localHostname); err != nil {
+	if err := sshtransport.RegisterPubkeyWithPeer(host, localPubkey, localPeerID); err != nil {
 		return fmt.Errorf("failed to register with %s: %w", host, err)
 	}
 	logging.Log("SUCCESS", "Registered with "+host)

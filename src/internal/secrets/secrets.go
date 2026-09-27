@@ -400,6 +400,11 @@ func getLineKey(line string) string {
 }
 
 func GetHostname() string {
+	// ENV_SYNC_HOSTNAME overrides the machine hostname (useful for tests
+	// and for simulating multiple machines on one host).
+	if override := strings.TrimSpace(os.Getenv("ENV_SYNC_HOSTNAME")); override != "" {
+		return override
+	}
 	if output, err := execCommand("hostname", "-f"); err == nil {
 		host := strings.TrimSpace(output)
 		if host != "" {

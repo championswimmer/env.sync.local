@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"envsync/internal/config"
+	"envsync/internal/secrets"
 )
 
 var hostPattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
@@ -21,11 +22,15 @@ type HealthResponse struct {
 	Host      string `json:"host"`
 }
 
-func FetchHealth(host string) (HealthResponse, error) {
+func FetchHealth(dial string) (HealthResponse, error) {
+	host, port := secrets.SplitDial(dial)
 	if err := validateHost(host); err != nil {
 		return HealthResponse{}, err
 	}
-	url := fmt.Sprintf("http://%s:%s/health", host, config.EnvSyncPort())
+	if port == "" {
+		port = config.EnvSyncPort()
+	}
+	url := fmt.Sprintf("http://%s:%s/health", host, port)
 	client := &http.Client{Timeout: 2 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {
@@ -46,11 +51,15 @@ func FetchHealth(host string) (HealthResponse, error) {
 	return health, nil
 }
 
-func FetchSecrets(host string) ([]byte, error) {
+func FetchSecrets(dial string) ([]byte, error) {
+	host, port := secrets.SplitDial(dial)
 	if err := validateHost(host); err != nil {
 		return nil, err
 	}
-	url := fmt.Sprintf("http://%s:%s/secrets.env", host, config.EnvSyncPort())
+	if port == "" {
+		port = config.EnvSyncPort()
+	}
+	url := fmt.Sprintf("http://%s:%s/secrets.env", host, port)
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
 	if err != nil {

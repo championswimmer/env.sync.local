@@ -19,6 +19,7 @@ import (
 
 	"envsync/internal/config"
 	"envsync/internal/logging"
+	"envsync/internal/secrets"
 )
 
 // TransportIdentity holds the TLS transport keypair and certificate.
@@ -30,9 +31,16 @@ type TransportIdentity struct {
 }
 
 // GenerateTransportIdentity creates a new ECDSA P-256 keypair and self-signed X.509 certificate.
-func GenerateTransportIdentity(hostname string) (*TransportIdentity, error) {
-	if hostname == "" {
-		return nil, errors.New("hostname is required")
+// peerID is the per-user peer ID ("user@host"); it becomes the certificate
+// CN so two OS users on the same machine have distinct identities.
+// Legacy identities used a bare hostname CN and keep working.
+func GenerateTransportIdentity(peerID string) (*TransportIdentity, error) {
+	if peerID == "" {
+		return nil, errors.New("peer ID is required")
+	}
+	dnsNames := []string{peerID}
+	if ep := secrets.ParseEndpoint(peerID); !ep.Legacy {
+		dnsNames = []string{peerID, ep.Host}
 	}
 
 	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -48,7 +56,7 @@ func GenerateTransportIdentity(hostname string) (*TransportIdentity, error) {
 	template := &x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			CommonName:   hostname,
+			CommonName:   peerID,
 			Organization: []string{"env-sync"},
 		},
 		NotBefore:             time.Now().Add(-1 * time.Hour),
@@ -56,7 +64,7 @@ func GenerateTransportIdentity(hostname string) (*TransportIdentity, error) {
 		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageKeyEncipherment,
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth, x509.ExtKeyUsageClientAuth},
 		BasicConstraintsValid: true,
-		DNSNames:              []string{hostname},
+		DNSNames:              dnsNames,
 	}
 
 	certDER, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)

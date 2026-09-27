@@ -5,6 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v4.0.0] - 2026-09-27
+
+### Added
+
+- **Multi-user support on the same device**: two OS users on one machine can now run env-sync side by side
+  - Canonical per-user peer IDs (`user@host`) used as mDNS instance name, TLS certificate CN, and peer registry ID
+  - Per-user service ports: the second user transparently bumps to a free port and persists it (`~/.config/env-sync/port`)
+  - mDNS discovery returns structured peers with per-user ports (`DiscoverPeers`, `PortForPeer`/`PortMap`)
+  - Transports (SSH/HTTP/mTLS) accept `host`, `host:port`, and `user@host[:port]` dial strings
+  - `ENV_SYNC_USER` / `ENV_SYNC_HOSTNAME` overrides for tests and multi-machine simulation
+  - `serve -p/--port` pins an explicit port that is never auto-bumped
+- **New `internal/secrets/peerid.go`**: `LocalPeerID`, `NormalizePeerID`, `ParseEndpoint`/`Endpoint` (Dial/SSHDial/SplitDial/IsSelf), mDNS-safe sanitizers
+
+### Changed
+
+- **BREAKING**: peer identity is now `user@host` instead of bare hostname
+  - TLS identities, key cache entries, invites, and membership events use the per-user peer ID
+  - Legacy bare-hostname peers/identities keep working (matched by hostname fallback in auth and self-detection)
+- Sync resolves per-user endpoints with a single shared discovery pass and skips self by peer ID
+- `status` and key commands display peer IDs (`user@host`) instead of bare hostnames
+
 ## [v3.0.0] - 2025-02-16
 
 ### Added

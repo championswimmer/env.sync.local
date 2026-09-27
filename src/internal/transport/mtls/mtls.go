@@ -15,6 +15,7 @@ import (
 
 	"envsync/internal/config"
 	"envsync/internal/identity"
+	"envsync/internal/secrets"
 )
 
 // NewServerTLSConfig creates a TLS configuration for the mTLS server.
@@ -98,14 +99,26 @@ type HealthResponse struct {
 	Mode      string `json:"mode"`
 }
 
+// dialURL splits a "host[:port]" / "user@host[:port]" dial string and
+// builds an https URL on the peer's port (defaulting to the local port).
+// The SSH-style user part is stripped: it never goes on the wire for mTLS.
+func dialURL(dial, path string) string {
+	host, port := secrets.SplitDial(dial)
+	if port == "" {
+		port = config.EnvSyncPort()
+	}
+	return fmt.Sprintf("https://%s:%s%s", host, port, path)
+}
+
 // FetchHealth fetches health from a peer via mTLS.
-func FetchHealth(host string, peerID string) (HealthResponse, error) {
+// dial accepts "host", "host:port", or "user@host[:port]".
+func FetchHealth(dial string, peerID string) (HealthResponse, error) {
 	client, err := newMTLSClient(peerID)
 	if err != nil {
 		return HealthResponse{}, err
 	}
 
-	url := fmt.Sprintf("https://%s:%s/v2/health", host, config.EnvSyncPort())
+	url := dialURL(dial, "/v2/health")
 	resp, err := client.Get(url)
 	if err != nil {
 		return HealthResponse{}, err
@@ -125,13 +138,14 @@ func FetchHealth(host string, peerID string) (HealthResponse, error) {
 }
 
 // FetchSecrets fetches secrets from a peer via mTLS.
-func FetchSecrets(host string, peerID string) ([]byte, error) {
+// dial accepts "host", "host:port", or "user@host[:port]".
+func FetchSecrets(dial string, peerID string) ([]byte, error) {
 	client, err := newMTLSClient(peerID)
 	if err != nil {
 		return nil, err
 	}
 
-	url := fmt.Sprintf("https://%s:%s/v2/secrets", host, config.EnvSyncPort())
+	url := dialURL(dial, "/v2/secrets")
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
@@ -149,13 +163,13 @@ func FetchSecrets(host string, peerID string) ([]byte, error) {
 }
 
 // FetchMembershipEvents fetches membership events from a peer via mTLS.
-func FetchMembershipEvents(host string, peerID string, sinceEventID uint64) ([]byte, error) {
+func FetchMembershipEvents(dial string, peerID string, sinceEventID uint64) ([]byte, error) {
 	client, err := newMTLSClient(peerID)
 	if err != nil {
 		return nil, err
 	}
 
-	url := fmt.Sprintf("https://%s:%s/v2/membership/events?since=%d", host, config.EnvSyncPort(), sinceEventID)
+	url := dialURL(dial, fmt.Sprintf("/v2/membership/events?since=%d", sinceEventID))
 	resp, err := client.Get(url)
 	if err != nil {
 		return nil, err
@@ -166,13 +180,13 @@ func FetchMembershipEvents(host string, peerID string, sinceEventID uint64) ([]b
 }
 
 // RequestReencrypt asks a peer to re-encrypt secrets including our AGE pubkey.
-func RequestReencrypt(host string, peerID string, agePubkey string) error {
+func RequestReencrypt(dial string, peerID string, agePubkey string) error {
 	client, err := newMTLSClient(peerID)
 	if err != nil {
 		return err
 	}
 
-	url := fmt.Sprintf("https://%s:%s/v2/secrets/request-reencrypt", host, config.EnvSyncPort())
+	url := dialURL(dial, "/v2/secrets/request-reencrypt")
 	payload, _ := json.Marshal(map[string]string{"age_pubkey": agePubkey})
 	resp, err := client.Post(url, "application/json", bytes.NewReader(payload))
 	if err != nil {
@@ -188,7 +202,8 @@ func RequestReencrypt(host string, peerID string, agePubkey string) error {
 }
 
 // RequestAccess sends a peer access request with our identity.
-func RequestAccess(host string, token string, peerID string, hostname string, fingerprint string, agePubkey string, certPEM []byte) error {
+// dial accepts "host", "host:port", or "user@host[:port]".
+func RequestAccess(dial string, token string, peerID string, hostname string, fingerprint string, agePubkey string, certPEM []byte) error {
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 		MinVersion:         tls.VersionTLS13,
@@ -218,7 +233,7 @@ func RequestAccess(host string, token string, peerID string, hostname string, fi
 		"cert_pem":    string(certPEM),
 	})
 
-	url := fmt.Sprintf("https://%s:%s/v2/peer/request-access", host, config.EnvSyncPort())
+	url := dialURL(dial, "/v2/peer/request-access")
 	resp, err := client.Post(url, "application/json", bytes.NewReader(payload))
 	if err != nil {
 		return err

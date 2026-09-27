@@ -1,13 +1,14 @@
 package discovery
 
 import (
-	"os"
 	"testing"
 
 	sshtransport "envsync/internal/transport/ssh"
 )
 
 func TestParseDnssdPeersAcceptsTrailingDotService(t *testing.T) {
+	t.Setenv("ENV_SYNC_HOSTNAME", "ci-test-host")
+	t.Setenv("ENV_SYNC_USER", "ci-test-user")
 	sample := `
 DATE: ---Tue 10 Feb 2026---
 21:12:46.949  ...STARTING...
@@ -32,15 +33,9 @@ Timestamp     A/R    Flags  if Domain               Service Type         Instanc
 }
 
 func TestParseDnssdPeersFiltersSelfHostname(t *testing.T) {
-	// Set up a fake hostname for testing
-	originalHostname := os.Getenv("HOSTNAME")
-	defer func() {
-		if originalHostname != "" {
-			os.Setenv("HOSTNAME", originalHostname)
-		} else {
-			os.Unsetenv("HOSTNAME")
-		}
-	}()
+	// Pin a fake self identity so the test is hermetic on any machine.
+	t.Setenv("ENV_SYNC_HOSTNAME", "ci-self-host")
+	t.Setenv("ENV_SYNC_USER", "ci-self-user")
 
 	// Get current hostname to use in test
 	selfHostname := sshtransport.Hostname()
@@ -82,6 +77,8 @@ Timestamp     A/R    Flags  if Domain               Service Type         Instanc
 }
 
 func TestParseDnssdPeersFiltersMultipleSelfReferences(t *testing.T) {
+	t.Setenv("ENV_SYNC_HOSTNAME", "ci-self-host")
+	t.Setenv("ENV_SYNC_USER", "ci-self-user")
 	selfHostname := sshtransport.Hostname()
 
 	// Extract just the hostname part without .local suffix for instance name

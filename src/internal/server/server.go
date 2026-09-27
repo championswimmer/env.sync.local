@@ -28,7 +28,10 @@ import (
 )
 
 type Options struct {
-	Port         string
+	Port string
+	// PortExplicit is set when the user pinned the port via -p/--port.
+	// Explicit ports are never auto-bumped for multi-user coexistence.
+	PortExplicit bool
 	Daemon       bool
 	Quiet        bool
 	Service      bool
@@ -38,6 +41,12 @@ type Options struct {
 func Run(opts Options) error {
 	if opts.Port == "" {
 		opts.Port = config.EnvSyncPort()
+	}
+	// Two OS users on one machine share the default port: the second
+	// user transparently bumps to a free per-user port (persisted).
+	// Never bump explicitly pinned ports (-p/--port or ENV_SYNC_PORT).
+	if !opts.PortExplicit {
+		opts.Port = ensureLocalPort(opts.Port)
 	}
 	if opts.SyncInterval == 0 {
 		opts.SyncInterval = 30 * time.Minute
@@ -291,9 +300,9 @@ func buildSecureServer(opts Options) (*http.Server, *tls.Config, error) {
 		_ = os.WriteFile(config.ServerPidFile(), []byte(fmt.Sprintf("%d", os.Getpid())), 0o600)
 	}
 
-	// Ensure transport identity exists
-	hostname := secrets.GetHostname()
-	if _, err := identity.EnsureIdentity(hostname); err != nil {
+	// Ensure transport identity exists. The identity is per-user
+	// ("user@host" CN) so two OS users on one machine differ.
+	if _, err := identity.EnsureIdentity(secrets.LocalPeerID()); err != nil {
 		return nil, nil, fmt.Errorf("failed to ensure transport identity: %w", err)
 	}
 
@@ -413,13 +422,7 @@ func v2SecretsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if peer is authorized (in our registry as approved)
-	authorized := reg.IsAuthorized(peerID, peer.CapRead)
-	// Also check if we have this peer in our registry at all (meaning we approved them)
-	_, peerInRegistryErr := reg.GetPeerByHostname(peerID)
-	peerInRegistry := peerInRegistryErr == nil
-
-	if !authorized && !peerInRegistry {
+	if !isPeerAllowed(reg, peerID, peer.CapRead) {
 		jsonError(w, http.StatusForbidden, "peer not authorized to read secrets")
 		return
 	}
@@ -601,12 +604,7 @@ func v2RequestReencryptHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Check if the peer is authorized OR if we have the peer in our registry
-	// (meaning we approved them, so they can request re-encryption)
-	authorized := reg.IsAuthorized(peerID, peer.CapRequestReencrypt)
-	_, peerInRegistryErr := reg.GetPeerByHostname(peerID)
-	peerInRegistry := peerInRegistryErr == nil
-	if !authorized && !peerInRegistry {
+	if !isPeerAllowed(reg, peerID, peer.CapRequestReencrypt) {
 		jsonError(w, http.StatusForbidden, "peer not authorized to request re-encryption")
 		return
 	}
@@ -623,11 +621,61 @@ func v2RequestReencryptHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // extractPeerID extracts the peer ID from a client certificate CommonName.
+// New identities use "user@host" CNs; legacy ones use a bare hostname.
 func extractPeerID(r *http.Request) string {
 	if r.TLS == nil || len(r.TLS.PeerCertificates) == 0 {
 		return ""
 	}
 	return r.TLS.PeerCertificates[0].Subject.CommonName
+}
+
+// isPeerAllowed reports whether peerID may act with the given capability.
+// Accepts the peer when it is approved with the capability, or when it is
+// otherwise known-approved in the registry (lenient path that predates
+// capabilities). Legacy bare-hostname CNs are matched by hostname as well
+// as by ID so old clients keep working.
+func isPeerAllowed(reg *peer.Registry, peerID string, cap peer.Capability) bool {
+	if peerID == "" || reg == nil {
+		return false
+	}
+	if reg.IsAuthorized(peerID, cap) {
+		return true
+	}
+	if p, err := reg.GetPeer(peerID); err == nil && p.State == peer.StateApproved {
+		return true
+	}
+	if p, err := reg.GetPeerByHostname(peerID); err == nil && p.State == peer.StateApproved {
+		return true
+	}
+	return false
+}
+
+// ensureLocalPort returns a free port for this user. Explicitly pinned
+// ports (ENV_SYNC_PORT) are never bumped. Otherwise, if the wanted port
+// is occupied (e.g. another OS user on this machine), the next free port
+// is picked and persisted as this user's port.
+func ensureLocalPort(want string) string {
+	if want == "" {
+		want = config.EnvSyncPort()
+	}
+	if config.ExplicitPort() {
+		return want
+	}
+	if checkPort(want) == nil {
+		return want
+	}
+	base := 0
+	fmt.Sscanf(want, "%d", &base)
+	for p := base + 1; p <= base+100 && p <= 65535; p++ {
+		candidate := fmt.Sprintf("%d", p)
+		if checkPort(candidate) == nil {
+			if err := config.SetLocalPort(candidate); err == nil {
+				logging.Log("INFO", fmt.Sprintf("Port %s in use, using per-user port %s", want, candidate))
+			}
+			return candidate
+		}
+	}
+	return want
 }
 
 func jsonError(w http.ResponseWriter, code int, message string) {

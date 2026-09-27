@@ -268,15 +268,16 @@ func GetAllKnownRecipients() []string {
 	return recipients
 }
 
-// GetAllKnownPublicKeys returns a map of hostname -> public key for all known machines
+// GetAllKnownPublicKeys returns a map of peer ID -> public key for all known machines.
+// Keys are per-user peer IDs ("user@host"); legacy hostname-keyed entries
+// are preserved as-is for backward compatibility.
 func GetAllKnownPublicKeys() map[string]string {
 	publicKeys := make(map[string]string)
 
-	// Add local machine
+	// Add local machine (per-user peer ID)
 	local := GetLocalPubkey()
 	if local != "" {
-		hostname := getLocalHostname()
-		publicKeys[hostname] = local
+		publicKeys[getLocalPeerID()] = local
 	}
 
 	// Add all cached peer keys
@@ -334,11 +335,12 @@ func ExtractPublicKeysFromFile(file string) map[string]string {
 // CachePublicKeysFromFile extracts public keys from a file and caches them locally
 func CachePublicKeysFromFile(file string) error {
 	publicKeys := ExtractPublicKeysFromFile(file)
-	localHostname := getLocalHostname()
+	localPeer := getLocalPeerID()
+	localHost := getLocalHostname()
 
 	for hostname, pubkey := range publicKeys {
-		// Don't cache our own key
-		if hostname == localHostname {
+		// Don't cache our own key (peer ID or legacy hostname forms)
+		if hostname == localPeer || hostname == localHost {
 			continue
 		}
 
@@ -357,6 +359,11 @@ func CachePublicKeysFromFile(file string) error {
 
 func getLocalHostname() string {
 	return secrets.GetHostname()
+}
+
+// getLocalPeerID returns the canonical per-user peer ID ("user@host").
+func getLocalPeerID() string {
+	return secrets.LocalPeerID()
 }
 
 func ValidatePubkey(pubkey string) bool {

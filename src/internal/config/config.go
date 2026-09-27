@@ -10,7 +10,7 @@ import (
 type SyncMode string
 
 const (
-	Version              = "3.2.0"
+	Version              = "4.0.0"
 	DefaultPort          = "5739"
 	Service              = "_envsync._tcp"
 	DefaultInitTimestamp = "1970-01-01T00:00:00Z"
@@ -57,7 +57,59 @@ func EnvSyncPort() string {
 	if port := os.Getenv("ENV_SYNC_PORT"); port != "" {
 		return port
 	}
+	return LocalPort()
+}
+
+// PortFile persists a per-user port choice so two OS users on the same
+// machine can run servers side by side without colliding.
+func PortFile() string {
+	return filepath.Join(ConfigDir(), "port")
+}
+
+// ExplicitPort reports whether the port was explicitly pinned via
+// ENV_SYNC_PORT. Explicit ports are never auto-bumped.
+func ExplicitPort() bool {
+	return os.Getenv("ENV_SYNC_PORT") != ""
+}
+
+// LocalPort returns this user's service port: explicit env override,
+// else the persisted per-user choice, else the default.
+func LocalPort() string {
+	if data, err := os.ReadFile(PortFile()); err == nil {
+		if port := strings.TrimSpace(string(data)); isValidPort(port) {
+			return port
+		}
+	}
 	return DefaultPort
+}
+
+// SetLocalPort persists this user's service port choice.
+func SetLocalPort(port string) error {
+	if !isValidPort(port) {
+		return &portError{port}
+	}
+	if err := os.MkdirAll(ConfigDir(), 0o700); err != nil {
+		return err
+	}
+	return os.WriteFile(PortFile(), []byte(port+"\n"), 0o600)
+}
+
+type portError struct{ port string }
+
+func (e *portError) Error() string { return "invalid port: " + e.port }
+
+func isValidPort(port string) bool {
+	if port == "" || len(port) > 5 {
+		return false
+	}
+	n := 0
+	for _, r := range port {
+		if r < '0' || r > '9' {
+			return false
+		}
+		n = n*10 + int(r-'0')
+	}
+	return n > 0 && n <= 65535
 }
 
 func InitTimestamp() string {

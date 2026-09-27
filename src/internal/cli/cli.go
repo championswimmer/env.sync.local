@@ -276,6 +276,7 @@ func runServe(args []string, usageName string) int {
 				return 1
 			}
 			opts.Port = args[i+1]
+			opts.PortExplicit = true
 			i++
 		case "-d", "--daemon":
 			opts.Daemon = true
@@ -375,14 +376,18 @@ func runStatus(_ []string) int {
 	fmt.Println("")
 
 	fmt.Println("Discovered Peers:")
-	peers, err := discovery.Discover(discovery.Options{Timeout: 5 * time.Second, Quiet: true})
-	if err == nil && len(peers) > 0 {
-		fmt.Printf("  Found %d peer(s):\n", len(peers))
-		for _, peer := range peers {
-			if health, err := fetchHealth(peer); err == nil {
-				fmt.Printf("    ✓ %s (v%s)\n", peer, health.Version)
+	structPeers, err := discovery.DiscoverPeers(discovery.Options{Timeout: 5 * time.Second, Quiet: true})
+	if err == nil && len(structPeers) > 0 {
+		fmt.Printf("  Found %d peer(s):\n", len(structPeers))
+		for _, sp := range structPeers {
+			name := sp.Display()
+			if sp.Port != "" && sp.Port != config.DefaultPort {
+				name = fmt.Sprintf("%s (port %s)", name, sp.Port)
+			}
+			if health, err := fetchHealth(sp.Dial()); err == nil {
+				fmt.Printf("    ✓ %s (v%s)\n", name, health.Version)
 			} else {
-				fmt.Printf("    ✗ %s (unreachable)\n", peer)
+				fmt.Printf("    ✗ %s (unreachable)\n", name)
 			}
 		}
 	} else {
@@ -1138,10 +1143,10 @@ func runKeyShow(args []string) int {
 		return 1
 	}
 	fmt.Println("Public Key: " + pubkey)
-	fmt.Println("Hostname: " + secrets.GetHostname())
+	fmt.Println("Peer ID: " + secrets.LocalPeerID())
 	fmt.Println("")
 	fmt.Println("To share with peers:")
-	fmt.Println("  env-sync key import --pubkey \"" + pubkey + "\" " + secrets.GetHostname())
+	fmt.Println("  env-sync key import --pubkey \"" + pubkey + "\" " + secrets.LocalPeerID())
 	return 0
 }
 
@@ -1222,12 +1227,15 @@ func runKeyImport(args []string) int {
 	}
 
 	if fromHost != "" {
+		// Accept "host", "host:port", or "user@host[:port]"; the SSH
+		// user part selects the OS user on a shared machine.
+		fromEp := secrets.ParseEndpoint(fromHost)
 		logging.Log("INFO", "Fetching public key from "+fromHost+"...")
 		args := []string{
 			"ssh",
 			"-o", "ConnectTimeout=5",
 			"-o", "StrictHostKeyChecking=" + sshtransport.HostKeyCheckingMode(),
-			fromHost,
+			fromEp.SSHDial(),
 			"cat ~/.config/env-sync/keys/age_key.pub",
 		}
 		logging.LogCommand(args...)
@@ -1238,7 +1246,7 @@ func runKeyImport(args []string) int {
 			return 1
 		}
 		pubkey = strings.TrimSpace(string(output))
-		hostname = strings.TrimSuffix(fromHost, ".local")
+		hostname = fromEp.PeerID
 	}
 
 	if pubkey == "" {
@@ -1248,6 +1256,11 @@ func runKeyImport(args []string) int {
 	if hostname == "" {
 		logging.Log("ERROR", "Hostname required. Usage: env-sync key import <pubkey> <hostname>")
 		return 1
+	}
+	// Normalize "user@host" to the canonical peer ID so two OS users on
+	// one machine cache under distinct keys. Bare hostnames pass through.
+	if strings.Contains(hostname, "@") {
+		hostname = secrets.ParseEndpoint(hostname).PeerID
 	}
 
 	if !keys.ValidatePubkey(pubkey) {
@@ -1283,7 +1296,7 @@ func runKeyList(args []string) int {
 
 	pubkey := keys.GetLocalPubkey()
 	if pubkey != "" {
-		fmt.Println("Local Key (" + secrets.GetHostname() + "):")
+		fmt.Println("Local Key (" + secrets.LocalPeerID() + "):")
 		fmt.Println("  " + pubkey)
 		fmt.Println("")
 	}
@@ -1375,7 +1388,7 @@ func runKeyRequestAccess(args []string) int {
 				host,
 				"bash", "-c",
 				"mkdir -p ~/.config/env-sync/keys/known_hosts && printf %s \"$1\" > ~/.config/env-sync/keys/known_hosts/$2.pub && env-sync 2>/dev/null || true && echo 'SUCCESS'",
-				"bash", localPubkey, secrets.GetHostname(),
+				"bash", localPubkey, secrets.LocalPeerID(),
 			}
 			logging.LogCommand(args...)
 			cmd := exec.Command(args[0], args[1:]...)
@@ -1413,7 +1426,7 @@ func runKeyRequestAccess(args []string) int {
   "pubkey": "%s",
   "timestamp": "%s"
 }
-`, secrets.GetHostname(), localPubkey, secrets.GetTimestamp())
+`, secrets.LocalPeerID(), localPubkey, secrets.GetTimestamp())
 			args := []string{
 				"ssh",
 				"-o", "ConnectTimeout=5",
@@ -1421,7 +1434,7 @@ func runKeyRequestAccess(args []string) int {
 				host,
 				"bash", "-c",
 				"mkdir -p ~/.config/env-sync/requests && cat > ~/.config/env-sync/requests/$1.request && echo 'REQUEST_SENT'",
-				"bash", secrets.GetHostname(),
+				"bash", secrets.LocalPeerID(),
 			}
 			logging.LogCommand(args...)
 			cmd := exec.Command(args[0], args[1:]...)
@@ -1600,8 +1613,7 @@ func runMode(args []string) int {
 
 		// Mode-specific initialization
 		if newMode == config.ModeSecurePeer {
-			hostname := secrets.GetHostname()
-			if _, err := identity.EnsureIdentity(hostname); err != nil {
+			if _, err := identity.EnsureIdentity(secrets.LocalPeerID()); err != nil {
 				logging.Log("ERROR", "Failed to generate TLS identity: "+err.Error())
 				return 1
 			}
@@ -1715,10 +1727,10 @@ func runPeerInvite(args []string) int {
 		return 1
 	}
 
-	hostname := secrets.GetHostname()
+	localPeerID := secrets.LocalPeerID()
 	fingerprint := identity.Fingerprint(id.Certificate)
 
-	invite, err := peer.CreateInvite(hostname, fingerprint, expiry)
+	invite, err := peer.CreateInvite(localPeerID, fingerprint, expiry)
 	if err != nil {
 		logging.Log("ERROR", "Failed to create invite: "+err.Error())
 		return 1
@@ -1729,12 +1741,12 @@ func runPeerInvite(args []string) int {
 	fmt.Println("╚═══════════════════════════════════════════════════╝")
 	fmt.Println("")
 	fmt.Println("Token:       " + invite.Token)
-	fmt.Println("Created by:  " + hostname)
+	fmt.Println("Created by:  " + localPeerID)
 	fmt.Println("Fingerprint: " + fingerprint)
 	fmt.Println("Expires:     " + invite.ExpiresAt)
 	fmt.Println("")
 	fmt.Println("On the new peer, run:")
-	fmt.Printf("  env-sync peer request %s %s\n", hostname, invite.Token)
+	fmt.Printf("  env-sync peer request %s %s\n", localPeerID, invite.Token)
 	return 0
 }
 
@@ -1747,8 +1759,8 @@ func runPeerRequest(args []string) int {
 	host := args[0]
 	token := args[1]
 
-	hostname := secrets.GetHostname()
-	id, err := identity.EnsureIdentity(hostname)
+	localPeerID := secrets.LocalPeerID()
+	id, err := identity.EnsureIdentity(localPeerID)
 	if err != nil {
 		logging.Log("ERROR", "Failed to ensure transport identity: "+err.Error())
 		return 1
@@ -1763,7 +1775,16 @@ func runPeerRequest(args []string) int {
 
 	logging.Log("INFO", "Sending access request to "+host+"...")
 
-	err = mtlstransport.RequestAccess(host, token, hostname, hostname, fingerprint, agePubkey, id.CertPEM)
+	// Resolve the peer's advertised port (two users on one host differ).
+	dial := host
+	if ep := secrets.ParseEndpoint(host); ep.Port == "" {
+		if port := discovery.PortForPeer(ep.PeerID); port != "" {
+			ep.Port = port
+			dial = ep.Dial("")
+		}
+	}
+
+	err = mtlstransport.RequestAccess(dial, token, localPeerID, secrets.GetHostname(), fingerprint, agePubkey, id.CertPEM)
 	if err != nil {
 		logging.Log("ERROR", "Access request failed: "+err.Error())
 		logging.Log("INFO", "Ensure the peer server is running: env-sync serve -d")
@@ -1771,7 +1792,7 @@ func runPeerRequest(args []string) int {
 	}
 
 	logging.Log("SUCCESS", "Access request sent to "+host)
-	logging.Log("INFO", "Wait for the peer owner to run: env-sync peer approve "+hostname)
+	logging.Log("INFO", "Wait for the peer owner to run: env-sync peer approve "+localPeerID)
 	return 0
 }
 
@@ -1819,7 +1840,7 @@ func runPeerApprove(args []string) int {
 	}
 
 	// Create membership event for the approval
-	hostname := secrets.GetHostname()
+	hostname := secrets.LocalPeerID()
 	id, err := identity.LoadIdentity()
 	if err != nil {
 		logging.Log("WARN", "Could not load identity for membership event: "+err.Error())
@@ -1882,7 +1903,7 @@ func runPeerRevoke(args []string) int {
 	}
 
 	// Create membership event for the revocation
-	hostname := secrets.GetHostname()
+	hostname := secrets.LocalPeerID()
 	id, err := identity.LoadIdentity()
 	if err != nil {
 		logging.Log("WARN", "Could not load identity for membership event: "+err.Error())
